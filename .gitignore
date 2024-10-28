@@ -81,3 +81,4 @@ Thumbs.db
 # 特定于项目的忽略项（根据需要添加）
 # example_specific_file.go
 # example_specific_directory/
+*.txt

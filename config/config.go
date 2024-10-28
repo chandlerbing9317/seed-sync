@@ -38,6 +38,7 @@ func InitConfig() {
 		if err != nil {
 			panic(err)
 		}
+		Conf = &Config{}
 		err = viper.Unmarshal(Conf)
 		if err != nil {
 			panic("配置文件读取失败" + err.Error()) // 映射过程中的错误处理

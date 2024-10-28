@@ -36,7 +36,7 @@ COPY --from=builder /build/config/*.toml /app/config/
 RUN chmod +x /app/seed-sync
 
 # 暴露端口
-EXPOSE 8702
+EXPOSE 8705
 
 # 运行应用
 CMD ["./seed-sync"]

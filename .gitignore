@@ -82,3 +82,4 @@ Thumbs.db
 # example_specific_file.go
 # example_specific_directory/
 *.txt
+data.db

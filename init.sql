@@ -1,0 +1,9 @@
+-- 系统参数表
+CREATE TABLE IF NOT EXISTS seed_sync_system_param
+(
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    `key`       TEXT NOT NULL,
+    value       TEXT NOT NULL,
+    create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

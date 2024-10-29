@@ -36,19 +36,13 @@ type CookieCloudEncryptedData struct {
 
 // cookie-cloud返回的数据
 type CookieCloudResponse struct {
-	Success bool            `json:"success"`
-	Msg     string          `json:"msg"`
-	Data    CookieCloudData `json:"data"`
-}
-
-type CookieCloudData struct {
 	CookieData       map[string][]CookieData `json:"cookie_data"`
 	LocalStorageData map[string]interface{}  `json:"local_storage_data"`
 	UpdateTime       string                  `json:"update_time"`
 }
 
 // 获取指定域名的cookie
-func (data *CookieCloudData) GetCookieByDomain(domain string) (string, error) {
+func (data *CookieCloudResponse) GetCookieByDomain(domain string) (string, error) {
 	cookies, ok := data.CookieData[domain]
 	if !ok {
 		return "", fmt.Errorf("no cookie data found for domain: %s", domain)
@@ -113,7 +107,7 @@ func GetCookieCloudConfig() (*CookieCloudConfig, error) {
 }
 
 // 向cookie-cloud发请求 同步站点cookie
-func SyncSiteCookie() (*CookieCloudData, error) {
+func SyncSiteCookie() (*CookieCloudResponse, error) {
 	config, err := GetCookieCloudConfig()
 	if err != nil {
 		return nil, err
@@ -159,10 +153,7 @@ func SyncSiteCookie() (*CookieCloudData, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !cookieCloudResponse.Success {
-		return nil, fmt.Errorf("cookie-cloud server return error: %s", cookieCloudResponse.Msg)
-	}
-	return &cookieCloudResponse.Data, nil
+	return &cookieCloudResponse, nil
 }
 
 // Decrypt a CryptoJS.AES.encrypt(msg, password) encrypted msg.

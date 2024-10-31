@@ -28,6 +28,24 @@ func GetSystemParam(key string) (string, error) {
 	return systemParam.Value, nil
 }
 
+// 带事务的保存或更新系统参数
+func SaveOrUpdateSystemParamWithTx(tx *gorm.DB, key string, value string) error {
+	return tx.Where("`key` = ?", key).
+		Assign(map[string]interface{}{
+			"value":       value,
+			"update_time": time.Now(),
+		}).
+		FirstOrCreate(&SystemParam{
+			Key:   key,
+			Value: value,
+		}).Error
+}
+
+// 带事务的删除系统参数
+func DeleteSystemParamWithTx(tx *gorm.DB, key string) error {
+	return tx.Where("`key` = ?", key).Delete(&SystemParam{}).Error
+}
+
 func SaveOrUpdateSystemParam(key, value string) error {
 	var systemParam SystemParam
 	err := driver.DB.Model(&SystemParam{}).Where("key = ?", key).First(&systemParam).Error
@@ -45,4 +63,9 @@ func SaveOrUpdateSystemParam(key, value string) error {
 	systemParam.Value = value
 	systemParam.UpdateTime = time.Now()
 	return driver.DB.Save(&systemParam).Error
+}
+
+// 删除系统参数
+func DeleteSystemParam(key string) error {
+	return driver.DB.Model(&SystemParam{}).Where("key = ?", key).Delete(&SystemParam{}).Error
 }

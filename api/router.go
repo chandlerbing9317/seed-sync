@@ -36,8 +36,7 @@ func InitRouter() *gin.Engine {
 
 	//cookie cloud相关api
 	router.GET("/cookie-cloud/get", api.GetCookieCloudConfig)
-	router.POST("/cookie-cloud/add-or-update", api.AddOrUpdateCookieCloudConfig)
-	router.GET("/cookie-cloud/sync-site-cookie", api.SyncSiteCookie)
+	router.POST("/cookie-cloud/add-or-update", api.AddOrUpdateCookieCloud)
 
 	return router
 }

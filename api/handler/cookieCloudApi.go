@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"seed-sync/common"
+	"seed-sync/config"
 	"seed-sync/service"
 
 	"github.com/gin-gonic/gin"
@@ -17,16 +18,16 @@ const (
 // @Tags         cookie cloud
 // @Accept       json
 // @Produce      json
-// @Param        config  body  service.CookieCloudConfig  true  "cookie cloud配置"
-// @Success      200  
+// @Param        config  body  config.CookieCloudConfig  true  "cookie cloud配置"
+// @Success      200
 // @Router       /cookie-cloud/add-or-update [post]
-func AddOrUpdateCookieCloudConfig(c *gin.Context) {
-	var config service.CookieCloudConfig
+func AddOrUpdateCookieCloud(c *gin.Context) {
+	var config config.CookieCloudConfig
 	if err := c.ShouldBindJSON(&config); err != nil {
 		c.JSON(http.StatusOK, common.FailResult("cookie cloud配置失败"+err.Error()))
 		return
 	}
-	err := service.AddOrUpdateCookieCloudConfig(&config)
+	err := service.CookieCloud.AddOrUpdateCookieCloud(&config)
 	if err != nil {
 		c.JSON(http.StatusOK, common.FailResult("cookie cloud配置失败"+err.Error()))
 		return
@@ -38,28 +39,13 @@ func AddOrUpdateCookieCloudConfig(c *gin.Context) {
 // @Description  获取cookie cloud配置
 // @Tags         cookie cloud
 // @Produce      json
-// @Success      200 
+// @Success      200
 // @Router       /cookie-cloud/get [get]
 func GetCookieCloudConfig(c *gin.Context) {
-	config, err := service.GetCookieCloudConfig()
+	config, err := service.CookieCloud.GetCookieCloudConfig()
 	if err != nil {
 		c.JSON(http.StatusOK, common.FailResult("获取cookie cloud配置失败"+err.Error()))
 		return
 	}
 	c.JSON(http.StatusOK, common.SuccessResult(config))
-}
-
-// @Summary      同步站点cookie
-// @Description  同步站点cookie
-// @Tags         cookie cloud
-// @Produce      json
-// @Success      200 
-// @Router       /cookie-cloud/sync-site-cookie [get]
-func SyncSiteCookie(c *gin.Context) {
-	cookie, err := service.SyncSiteCookie()
-	if err != nil {
-		c.JSON(http.StatusOK, common.FailResult("同步站点cookie失败"+err.Error()))
-		return
-	}
-	c.JSON(http.StatusOK, common.SuccessResult(cookie))
 }

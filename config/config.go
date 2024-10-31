@@ -8,13 +8,10 @@ import (
 
 type Config struct {
 	Log LogConfig `mapstructure:"log"`
-}
-type LogConfig struct {
-	Path       string `mapstructure:"path"`
-	MaxSize    int    `mapstructure:"maxSize"`
-	MaxBackups int    `mapstructure:"maxBackups"`
-	MaxAge     int    `mapstructure:"maxAge"`
-	Compress   bool   `mapstructure:"compress"`
+	//http连接配置
+	CookieCloudClientConfig  HttpClientConfig `mapstructure:"cookieCloudClient"`
+	QbittorrentClientConfig  HttpClientConfig `mapstructure:"qbittorrentClient"`
+	TransmissionClientConfig HttpClientConfig `mapstructure:"transmissionClient"`
 }
 
 func init() {
@@ -42,6 +39,37 @@ func InitConfig() {
 		err = viper.Unmarshal(Conf)
 		if err != nil {
 			panic("配置文件读取失败" + err.Error()) // 映射过程中的错误处理
+		}
+
+		//读取cookieCloudClient配置
+		viper.SetConfigName("cookieCloudClient")
+		err = viper.ReadInConfig()
+		if err != nil {
+			panic(err)
+		}
+		err = viper.Unmarshal(Conf.CookieCloudClientConfig)
+		if err != nil {
+			panic(err)
+		}
+		//读取qbittorrentClient配置
+		viper.SetConfigName("qbittorrentClient")
+		err = viper.ReadInConfig()
+		if err != nil {
+			panic(err)
+		}
+		err = viper.Unmarshal(Conf.QbittorrentClientConfig)
+		if err != nil {
+			panic(err)
+		}
+		//读取transmissionClient配置
+		viper.SetConfigName("transmissionClient")
+		err = viper.ReadInConfig()
+		if err != nil {
+			panic(err)
+		}
+		err = viper.Unmarshal(Conf.TransmissionClientConfig)
+		if err != nil {
+			panic(err)
 		}
 	})
 }

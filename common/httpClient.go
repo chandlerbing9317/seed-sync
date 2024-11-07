@@ -3,7 +3,6 @@ package common
 import (
 	"net"
 	"net/http"
-	"net/url"
 	"seed-sync/config"
 	"time"
 )
@@ -27,15 +26,15 @@ func NewHttpClient(config config.HttpClientConfig) *http.Client {
 	config = getHttpClientConfig(config)
 
 	transport := &http.Transport{
-		Proxy: getProxyFunc(config.ProxyUrl),
+		Proxy: GetProxyFunc(config.ProxyUrl),
 		DialContext: (&net.Dialer{
 			Timeout:   config.ConnTimeout, // 连接建立超时
 			KeepAlive: config.KeepAlive,
 			DualStack: true,
 		}).DialContext,
-		MaxIdleConns:          config.MaxIdleConns,        // 最大空闲连接数
-		IdleConnTimeout:       config.IdleConnTimeout,     // 空闲连接超时
-		TLSHandshakeTimeout:   config.TLSHandshakeTimeout, 
+		MaxIdleConns:          config.MaxIdleConns,    // 最大空闲连接数
+		IdleConnTimeout:       config.IdleConnTimeout, // 空闲连接超时
+		TLSHandshakeTimeout:   config.TLSHandshakeTimeout,
 		ExpectContinueTimeout: config.ExpectContinue,
 		ForceAttemptHTTP2:     true,
 		MaxIdleConnsPerHost:   config.MaxIdleConnsPerHost, // 每个host最大空闲连接数
@@ -85,13 +84,4 @@ func getHttpClientConfig(config config.HttpClientConfig) config.HttpClientConfig
 		config.ReadBufferSize = DefaultReadBufferSize
 	}
 	return config
-}
-
-func getProxyFunc(proxyUrl string) func(*http.Request) (*url.URL, error) {
-	if proxyUrl == "" {
-		return nil
-	}
-	return func(req *http.Request) (*url.URL, error) {
-		return url.Parse(proxyUrl)
-	}
 }

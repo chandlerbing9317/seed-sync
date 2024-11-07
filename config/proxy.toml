@@ -1,0 +1,4 @@
+[proxy]
+proxyUrl = "http://127.0.0.1:7890"
+proxyUsername = ""                 # 可选
+proxyPassword = ""                 # 可选

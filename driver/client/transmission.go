@@ -1,4 +1,4 @@
-package downloader
+package client
 
 // transmission交互层
 // ref:
@@ -18,5 +18,3 @@ type responseBody struct {
 	Result    string      `json:"result"`
 	Tag       *int        `json:"tag"`
 }
-
-

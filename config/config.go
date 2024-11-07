@@ -7,11 +7,13 @@ import (
 )
 
 type Config struct {
-	Log LogConfig `mapstructure:"log"`
+	Log   LogConfig   `mapstructure:"log"`
+	Proxy ProxyConfig `mapstructure:"proxy"`
 	//http连接配置
 	CookieCloudClientConfig  HttpClientConfig `mapstructure:"cookieCloudClient"`
 	QbittorrentClientConfig  HttpClientConfig `mapstructure:"qbittorrentClient"`
 	TransmissionClientConfig HttpClientConfig `mapstructure:"transmissionClient"`
+	SiteClientConfig         HttpClientConfig `mapstructure:"siteClient"`
 }
 
 func init() {
@@ -36,7 +38,7 @@ func InitConfig() {
 			panic(err)
 		}
 		Conf = &Config{}
-		err = viper.Unmarshal(Conf)
+		err = viper.Unmarshal(Conf.Log)
 		if err != nil {
 			panic("配置文件读取失败" + err.Error()) // 映射过程中的错误处理
 		}

@@ -1,4 +1,4 @@
-package driver
+package client
 
 import (
 	"bytes"
@@ -14,8 +14,7 @@ import (
 	"hash"
 	"io"
 	"net/http"
-	"seed-sync/common"
-	"seed-sync/config"
+	"seed-sync/driver/db"
 	"strings"
 	"sync"
 )
@@ -26,8 +25,7 @@ const (
 )
 
 type CookieCloudClient struct {
-	client *http.Client
-	config *config.CookieCloudConfig
+	config *db.CookieCloudConfig
 	lock   sync.Mutex
 }
 
@@ -72,10 +70,8 @@ type CookieData struct {
 }
 
 // 初始化cookie-cloud客户端 这个客户端由service层管理
-func NewCookieCloudClient(cookieCloudConfig *config.CookieCloudConfig) (*CookieCloudClient, error) {
-	httpClient := common.NewHttpClient(config.Conf.CookieCloudClientConfig)
+func NewCookieCloudClient(cookieCloudConfig *db.CookieCloudConfig) (*CookieCloudClient, error) {
 	return &CookieCloudClient{
-		client: httpClient,
 		config: cookieCloudConfig,
 		lock:   sync.Mutex{},
 	}, nil
@@ -83,28 +79,16 @@ func NewCookieCloudClient(cookieCloudConfig *config.CookieCloudConfig) (*CookieC
 
 // 销毁cookie-cloud客户端
 func (c *CookieCloudClient) Destroy() {
-	if c.client != nil {
-		// 关闭所有空闲连接
-		if transport, ok := c.client.Transport.(*http.Transport); ok {
-			transport.CloseIdleConnections()
-		}
-		c.client = nil
-	}
 	c.config = nil
 }
 
 // 更新cookie-cloud客户端
-func (c *CookieCloudClient) Update(config *config.CookieCloudConfig) (*CookieCloudClient, error) {
-	//url不变的话，无需更换client
-	if c.config.Url == config.Url {
-		c.config = config
-		return c, nil
-	}
-	c.Destroy()
-	return NewCookieCloudClient(config)
+func (c *CookieCloudClient) Update(config *db.CookieCloudConfig) (*CookieCloudClient, error) {
+	c.config = config
+	return c, nil
 }
 
-func (c *CookieCloudClient) GetConfig() *config.CookieCloudConfig {
+func (c *CookieCloudClient) GetConfig() *db.CookieCloudConfig {
 	return c.config
 }
 
@@ -116,7 +100,8 @@ func (c *CookieCloudClient) GetCookie() (*CookieCloudResponse, error) {
 
 	url := c.config.Url + "get/" + c.config.UserKey
 
-	res, err := c.client.Get(url)
+	//cookie-cloud请求频率很低，无需使用维持连接的httpClient
+	res, err := http.Get(url)
 	if err != nil {
 		return nil, err
 	}

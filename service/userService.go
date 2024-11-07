@@ -1,7 +1,7 @@
 package service
 
 import (
-	"seed-sync/driver"
+	"seed-sync/driver/db"
 	"time"
 
 	"gorm.io/gorm"
@@ -32,7 +32,7 @@ func (u *User) TableName() string {
 // 根据用户名获取用户
 func GetUserByUsername(username string) (*User, error) {
 	user := &User{}
-	if err := driver.DB.Where("username = ?", username).First(user).Error; err != nil {
+	if err := db.DB.Where("username = ?", username).First(user).Error; err != nil {
 		return nil, err
 	}
 	return user, nil
@@ -43,11 +43,11 @@ func CreateOrUpdateUser(user *User) error {
 	userData, err := GetUserByUsername(user.Username)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return driver.DB.Create(user).Error
+			return db.DB.Create(user).Error
 		}
 		return err
 	}
 	// 更新
 	user.Id = userData.Id
-	return driver.DB.Save(user).Error
+	return db.DB.Save(user).Error
 }

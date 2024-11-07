@@ -1,49 +1,32 @@
 package service
 
 import (
-	"encoding/json"
 	"errors"
-	"seed-sync/config"
-	"seed-sync/driver"
+	"seed-sync/driver/client"
+	"seed-sync/driver/db"
 	"sync"
 
 	"gorm.io/gorm"
 )
 
-var (
-	//对外暴露service
-	CookieCloud *CookieCloudService
-	once        sync.Once
-)
+// 初始化且对外暴露的单例service
+var CookieCloud = &CookieCloudService{
+	cookieCloudDAO: db.CookieCloudDao,
+	db:             db.DB,
+	lock:           sync.Mutex{},
+}
 
 type CookieCloudService struct {
-	client *driver.CookieCloudClient
-	db     *gorm.DB
-	lock   sync.Mutex
+	client         *client.CookieCloudClient
+	cookieCloudDAO *db.CookieCloudDAO
+	db             *gorm.DB
+	lock           sync.Mutex
 }
-
-func init() {
-	once.Do(func() {
-		CookieCloud = &CookieCloudService{
-			db:   driver.DB,
-			lock: sync.Mutex{},
-		}
-	})
-}
-
-const (
-	CookieCloudConfigKey = "cookie_cloud_config_key"
-)
 
 // 添加或更新cookie cloud配置
-func (service *CookieCloudService) AddOrUpdateCookieCloud(config *config.CookieCloudConfig) error {
-	configBytes, err := json.Marshal(config)
-	if err != nil {
-		return err
-	}
+func (service *CookieCloudService) AddOrUpdateCookieCloud(config *db.CookieCloudConfig) error {
 	service.lock.Lock()
 	defer service.lock.Unlock()
-
 	// 开启事务
 	tx := service.db.Begin()
 	defer func() {
@@ -52,13 +35,14 @@ func (service *CookieCloudService) AddOrUpdateCookieCloud(config *config.CookieC
 		}
 	}()
 
-	// 更新库
-	if err := SaveOrUpdateSystemParamWithTx(tx, CookieCloudConfigKey, string(configBytes)); err != nil {
+	// 操作库
+	if err := service.cookieCloudDAO.AddOrUpdateCookieCloudConfigWithTx(tx, config); err != nil {
 		tx.Rollback()
 		return err
 	}
-
-	var cookieCloudClient *driver.CookieCloudClient
+	//操作client
+	var cookieCloudClient *client.CookieCloudClient
+	var err error
 	if service.client != nil {
 		// 走更新流程
 		if cookieCloudClient, err = service.client.Update(config); err != nil {
@@ -67,19 +51,19 @@ func (service *CookieCloudService) AddOrUpdateCookieCloud(config *config.CookieC
 		}
 	} else {
 		// 走创建流程
-		if cookieCloudClient, err = driver.NewCookieCloudClient(config); err != nil {
+		if cookieCloudClient, err = client.NewCookieCloudClient(config); err != nil {
 			tx.Rollback()
 			return err
 		}
 	}
+	//更新client
+	service.client = cookieCloudClient
 
 	// 所有操作成功后提交事务
 	if err := tx.Commit().Error; err != nil {
 		tx.Rollback()
 		return err
 	}
-
-	service.client = cookieCloudClient
 	return nil
 }
 
@@ -98,26 +82,25 @@ func (service *CookieCloudService) DeleteCookieCloud() error {
 		}()
 
 		// 删库
-		if err := DeleteSystemParamWithTx(tx, CookieCloudConfigKey); err != nil {
+		if err := service.cookieCloudDAO.DeleteCookieCloudConfigWithTx(tx); err != nil {
 			tx.Rollback()
 			return err
 		}
+		// 删客户端
+		service.client.Destroy()
+		service.client = nil
 
 		// 提交事务
 		if err := tx.Commit().Error; err != nil {
 			tx.Rollback()
 			return err
 		}
-
-		// 删客户端
-		service.client.Destroy()
-		service.client = nil
 	}
 	return nil
 }
 
 // 获取cookie cloud配置
-func (service *CookieCloudService) GetCookieCloudConfig() (*config.CookieCloudConfig, error) {
+func (service *CookieCloudService) GetCookieCloudConfig() (*db.CookieCloudConfig, error) {
 	service.lock.Lock()
 	defer service.lock.Unlock()
 	if service.client == nil {

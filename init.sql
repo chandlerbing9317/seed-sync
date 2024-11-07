@@ -31,18 +31,22 @@ CREATE TABLE IF NOT EXISTS user
 CREATE TABLE IF NOT EXISTS seed_sync_site
 (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    name            TEXT NOT NULL,
+    site_name       TEXT NOT NULL,
+    show_name       TEXT,
     `order`         INTEGER NOT NULL,
-    url             TEXT,
-    cookie          TEXT,
-    api_key         TEXT,
-    token           TEXT,
-    custom_header   TEXT,
-    passkey         TEXT,
-    rss             TEXT,
+    host            TEXT,
     domains         TEXT,
+    cookie          TEXT,
+    passkey         TEXT,
+    rss_key         TEXT,
+  api_token       TEXT,
+    user_agent      TEXT,
+    custom_header   TEXT,
+    seed_list_url   TEXT,
+    rss_url         TEXT,
+    detail_url      TEXT,
     download_url    TEXT,
-    torrent_list_url TEXT,
+    ping_url        TEXT,
     proxy           BOOLEAN NOT NULL,
     timeout         INTEGER,
     is_override     BOOLEAN NOT NULL,
@@ -54,3 +58,19 @@ CREATE TABLE IF NOT EXISTS seed_sync_site
 -- 创建索引
 CREATE UNIQUE INDEX IF NOT EXISTS idx_seed_sync_site_name ON seed_sync_site(name);
 CREATE INDEX IF NOT EXISTS idx_seed_sync_site_order ON seed_sync_site(`order`);
+
+
+-- 站点流控表
+CREATE TABLE IF NOT EXISTS seed_sync_site_flow_control
+(
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    site_name       TEXT NOT NULL,
+    max_per_min     INTEGER NOT NULL,
+    max_per_hour    INTEGER NOT NULL,
+    max_per_day     INTEGER NOT NULL,
+    create_time     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 创建索引
+CREATE INDEX IF NOT EXISTS idx_seed_sync_site_flow_control_site_name ON seed_sync_site_flow_control(site_name);

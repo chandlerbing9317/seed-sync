@@ -3,7 +3,7 @@ package api
 import (
 	"net/http"
 	"seed-sync/common"
-	"seed-sync/config"
+	"seed-sync/driver/db"
 	"seed-sync/service"
 
 	"github.com/gin-gonic/gin"
@@ -22,7 +22,7 @@ const (
 // @Success      200
 // @Router       /cookie-cloud/add-or-update [post]
 func AddOrUpdateCookieCloud(c *gin.Context) {
-	var config config.CookieCloudConfig
+	var config db.CookieCloudConfig
 	if err := c.ShouldBindJSON(&config); err != nil {
 		c.JSON(http.StatusOK, common.FailResult("cookie cloud配置失败"+err.Error()))
 		return

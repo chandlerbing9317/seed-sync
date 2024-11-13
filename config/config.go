@@ -7,13 +7,13 @@ import (
 )
 
 type Config struct {
-	Log   LogConfig   `mapstructure:"log"`
-	Proxy ProxyConfig `mapstructure:"proxy"`
-	//http连接配置
-	CookieCloudClientConfig  HttpClientConfig `mapstructure:"cookieCloudClient"`
+	LogConfig                LogConfig        `mapstructure:"log"`
+	ProxyConfig              ProxyConfig      `mapstructure:"proxy"`
+	ServerConfig             ServerConfig     `mapstructure:"server"`
 	QbittorrentClientConfig  HttpClientConfig `mapstructure:"qbittorrentClient"`
 	TransmissionClientConfig HttpClientConfig `mapstructure:"transmissionClient"`
 	SiteClientConfig         HttpClientConfig `mapstructure:"siteClient"`
+	ServerClientConfig       HttpClientConfig `mapstructure:"serverClient"`
 }
 
 func init() {
@@ -38,18 +38,27 @@ func InitConfig() {
 			panic(err)
 		}
 		Conf = &Config{}
-		err = viper.Unmarshal(Conf.Log)
+		err = viper.Unmarshal(Conf.LogConfig)
 		if err != nil {
 			panic("配置文件读取失败" + err.Error()) // 映射过程中的错误处理
 		}
-
-		//读取cookieCloudClient配置
-		viper.SetConfigName("cookieCloudClient")
+		//读取proxy配置
+		viper.SetConfigName("proxy")
 		err = viper.ReadInConfig()
 		if err != nil {
 			panic(err)
 		}
-		err = viper.Unmarshal(Conf.CookieCloudClientConfig)
+		err = viper.Unmarshal(Conf.ProxyConfig)
+		if err != nil {
+			panic(err)
+		}
+		//读取server配置
+		viper.SetConfigName("server")
+		err = viper.ReadInConfig()
+		if err != nil {
+			panic(err)
+		}
+		err = viper.Unmarshal(Conf.ServerConfig)
 		if err != nil {
 			panic(err)
 		}
@@ -70,6 +79,26 @@ func InitConfig() {
 			panic(err)
 		}
 		err = viper.Unmarshal(Conf.TransmissionClientConfig)
+		if err != nil {
+			panic(err)
+		}
+		//读取siteClient配置
+		viper.SetConfigName("siteClient")
+		err = viper.ReadInConfig()
+		if err != nil {
+			panic(err)
+		}
+		err = viper.Unmarshal(Conf.SiteClientConfig)
+		if err != nil {
+			panic(err)
+		}
+		//读取serverClient配置
+		viper.SetConfigName("serverClient")
+		err = viper.ReadInConfig()
+		if err != nil {
+			panic(err)
+		}
+		err = viper.Unmarshal(Conf.ServerClientConfig)
 		if err != nil {
 			panic(err)
 		}

@@ -20,6 +20,10 @@ func (nexusSite *NexusSite) GetPingUrl() string {
 	return common.Https + nexusSite.SiteInfo.Host + nexusSite.SiteInfo.PingUrl
 }
 
+func (nexusSite *NexusSite) GetSeedListUrl(page int) string {
+	return common.Https + nexusSite.SiteInfo.Host + fmt.Sprintf(nexusSite.SiteInfo.SeedListUrl, page)
+}
+
 func NewNexusSite(siteInfo *db.Site) (site.Site, error) {
 	return &NexusSite{
 		BaseSite: site.NewBaseSite(siteInfo),

@@ -1,9 +1,9 @@
 package log
 
 import (
-	"seed-sync/config"
 	"os"
 	"path/filepath"
+	"seed-sync/config"
 	"sync"
 	"time"
 
@@ -81,7 +81,7 @@ func customTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 
 // getWriteSyncer 获取日志写入器
 func getWriteSyncer() zapcore.WriteSyncer {
-	logConfig := config.Conf.Log
+	logConfig := config.Conf.LogConfig
 
 	// 确保日志目录存在
 	if err := os.MkdirAll(logConfig.Path, 0755); err != nil {

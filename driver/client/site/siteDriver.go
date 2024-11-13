@@ -96,15 +96,15 @@ func (baseSite *BaseSite) GetRequestClient() (*http.Client, error) {
 
 	//处理代理
 	if baseSite.SiteInfo.Proxy {
-		proxyURL, err := url.Parse(config.Conf.Proxy.ProxyURL)
+		proxyURL, err := url.Parse(config.Conf.ProxyConfig.ProxyURL)
 		if err != nil {
 			return nil, err
 		}
 
-		if config.Conf.Proxy.ProxyUsername != "" {
+		if config.Conf.ProxyConfig.ProxyUsername != "" {
 			proxyURL.User = url.UserPassword(
-				config.Conf.Proxy.ProxyUsername,
-				config.Conf.Proxy.ProxyPassword,
+				config.Conf.ProxyConfig.ProxyUsername,
+				config.Conf.ProxyConfig.ProxyPassword,
 			)
 		}
 

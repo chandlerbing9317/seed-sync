@@ -1,6 +1,6 @@
 basePath: /
 definitions:
-  service.CookieCloudConfig:
+  db.CookieCloudConfig:
     properties:
       p2p_password:
         description: 端对端加密密码
@@ -31,7 +31,7 @@ paths:
         name: config
         required: true
         schema:
-          $ref: '#/definitions/service.CookieCloudConfig'
+          $ref: '#/definitions/db.CookieCloudConfig'
       produces:
       - application/json
       responses:
@@ -49,17 +49,6 @@ paths:
         "200":
           description: OK
       summary: 获取cookie cloud配置
-      tags:
-      - cookie cloud
-  /cookie-cloud/sync-site-cookie:
-    get:
-      description: 同步站点cookie
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-      summary: 同步站点cookie
       tags:
       - cookie cloud
 schemes:

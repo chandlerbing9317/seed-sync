@@ -35,7 +35,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/service.CookieCloudConfig"
+                            "$ref": "#/definitions/db.CookieCloudConfig"
                         }
                     }
                 ],
@@ -62,27 +62,10 @@ const docTemplate = `{
                     }
                 }
             }
-        },
-        "/cookie-cloud/sync-site-cookie": {
-            "get": {
-                "description": "同步站点cookie",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "cookie cloud"
-                ],
-                "summary": "同步站点cookie",
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    }
-                }
-            }
         }
     },
     "definitions": {
-        "service.CookieCloudConfig": {
+        "db.CookieCloudConfig": {
             "type": "object",
             "properties": {
                 "p2p_password": {

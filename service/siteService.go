@@ -11,3 +11,9 @@ type SiteService struct {
 var Site = &SiteService{
 	siteDao: db.SiteDao,
 }
+
+func (s *SiteService) GetSiteList() ([]*db.Site, error) {
+	return s.siteDao.GetAllSites()
+}
+
+

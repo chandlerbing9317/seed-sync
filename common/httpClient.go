@@ -26,20 +26,20 @@ func NewHttpClient(config config.HttpClientConfig) *http.Client {
 	config = getHttpClientConfig(config)
 
 	transport := &http.Transport{
-		Proxy: GetProxyFunc(config.ProxyUrl),
+		Proxy: GetProxyFunc(config.Proxy),
 		DialContext: (&net.Dialer{
-			Timeout:   config.ConnTimeout, // 连接建立超时
-			KeepAlive: config.KeepAlive,
+			Timeout:   config.ConnTimeout * time.Second, // 连接建立超时
+			KeepAlive: config.KeepAlive * time.Second,
 			DualStack: true,
 		}).DialContext,
-		MaxIdleConns:          config.MaxIdleConns,    // 最大空闲连接数
-		IdleConnTimeout:       config.IdleConnTimeout, // 空闲连接超时
-		TLSHandshakeTimeout:   config.TLSHandshakeTimeout,
-		ExpectContinueTimeout: config.ExpectContinue,
+		MaxIdleConns:          config.MaxIdleConns,                  // 最大空闲连接数
+		IdleConnTimeout:       config.IdleConnTimeout * time.Second, // 空闲连接超时
+		TLSHandshakeTimeout:   config.TLSHandshakeTimeout * time.Second,
+		ExpectContinueTimeout: config.ExpectContinue * time.Second,
 		ForceAttemptHTTP2:     true,
 		MaxIdleConnsPerHost:   config.MaxIdleConnsPerHost, // 每个host最大空闲连接数
 
-		ResponseHeaderTimeout: config.ReadTimeout, // 等待服务器响应头的超时时间
+		ResponseHeaderTimeout: config.ReadTimeout * time.Second, // 等待服务器响应头的超时时间
 		WriteBufferSize:       config.WriteBufferSize,
 		ReadBufferSize:        config.ReadBufferSize,
 	}

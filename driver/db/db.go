@@ -8,10 +8,6 @@ import (
 	"gorm.io/gorm"
 )
 
-func init() {
-	InitDb()
-}
-
 var once sync.Once
 
 var DB *gorm.DB

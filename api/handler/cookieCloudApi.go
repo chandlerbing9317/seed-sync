@@ -18,7 +18,7 @@ const (
 // @Tags         cookie cloud
 // @Accept       json
 // @Produce      json
-// @Param        config  body  config.CookieCloudConfig  true  "cookie cloud配置"
+// @Param        config  body  db.CookieCloudConfig  true  "cookie cloud配置"
 // @Success      200
 // @Router       /cookie-cloud/add-or-update [post]
 func AddOrUpdateCookieCloud(c *gin.Context) {

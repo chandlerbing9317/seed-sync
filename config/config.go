@@ -7,13 +7,13 @@ import (
 )
 
 type Config struct {
-	LogConfig                LogConfig        `mapstructure:"log"`
-	ProxyConfig              ProxyConfig      `mapstructure:"proxy"`
-	ServerConfig             ServerConfig     `mapstructure:"server"`
-	QbittorrentClientConfig  HttpClientConfig `mapstructure:"qbittorrentClient"`
-	TransmissionClientConfig HttpClientConfig `mapstructure:"transmissionClient"`
-	SiteClientConfig         HttpClientConfig `mapstructure:"siteClient"`
-	ServerClientConfig       HttpClientConfig `mapstructure:"serverClient"`
+	LogConfig    LogConfig    `mapstructure:"log"`
+	ProxyConfig  ProxyConfig  `mapstructure:"proxy"`
+	ServerConfig ServerConfig `mapstructure:"server"`
+	// QbittorrentClientConfig  HttpClientConfig `mapstructure:"qbittorrentClient"`
+	// TransmissionClientConfig HttpClientConfig `mapstructure:"transmissionClient"`
+	// SiteClientConfig         HttpClientConfig `mapstructure:"siteClient"`
+	ServerClientConfig HttpClientConfig `mapstructure:"serverClient"`
 }
 
 func init() {
@@ -38,7 +38,7 @@ func InitConfig() {
 			panic(err)
 		}
 		Conf = &Config{}
-		err = viper.Unmarshal(Conf.LogConfig)
+		err = viper.Unmarshal(&Conf.LogConfig)
 		if err != nil {
 			panic("配置文件读取失败" + err.Error()) // 映射过程中的错误处理
 		}
@@ -48,7 +48,7 @@ func InitConfig() {
 		if err != nil {
 			panic(err)
 		}
-		err = viper.Unmarshal(Conf.ProxyConfig)
+		err = viper.Unmarshal(&Conf.ProxyConfig)
 		if err != nil {
 			panic(err)
 		}
@@ -58,47 +58,47 @@ func InitConfig() {
 		if err != nil {
 			panic(err)
 		}
-		err = viper.Unmarshal(Conf.ServerConfig)
+		err = viper.Unmarshal(&Conf.ServerConfig)
 		if err != nil {
 			panic(err)
 		}
-		//读取qbittorrentClient配置
-		viper.SetConfigName("qbittorrentClient")
-		err = viper.ReadInConfig()
-		if err != nil {
-			panic(err)
-		}
-		err = viper.Unmarshal(Conf.QbittorrentClientConfig)
-		if err != nil {
-			panic(err)
-		}
-		//读取transmissionClient配置
-		viper.SetConfigName("transmissionClient")
-		err = viper.ReadInConfig()
-		if err != nil {
-			panic(err)
-		}
-		err = viper.Unmarshal(Conf.TransmissionClientConfig)
-		if err != nil {
-			panic(err)
-		}
-		//读取siteClient配置
-		viper.SetConfigName("siteClient")
-		err = viper.ReadInConfig()
-		if err != nil {
-			panic(err)
-		}
-		err = viper.Unmarshal(Conf.SiteClientConfig)
-		if err != nil {
-			panic(err)
-		}
+		// //读取qbittorrentClient配置
+		// viper.SetConfigName("qbittorrentClient")
+		// err = viper.ReadInConfig()
+		// if err != nil {
+		// 	panic(err)
+		// }
+		// err = viper.Unmarshal(&Conf.QbittorrentClientConfig)
+		// if err != nil {
+		// 	panic(err)
+		// }
+		// //读取transmissionClient配置
+		// viper.SetConfigName("transmissionClient")
+		// err = viper.ReadInConfig()
+		// if err != nil {
+		// 	panic(err)
+		// }
+		// err = viper.Unmarshal(&Conf.TransmissionClientConfig)
+		// if err != nil {
+		// 	panic(err)
+		// }
+		// //读取siteClient配置
+		// viper.SetConfigName("siteClient")
+		// err = viper.ReadInConfig()
+		// if err != nil {
+		// 	panic(err)
+		// }
+		// err = viper.Unmarshal(&Conf.SiteClientConfig)
+		// if err != nil {
+		// 	panic(err)
+		// }
 		//读取serverClient配置
 		viper.SetConfigName("serverClient")
 		err = viper.ReadInConfig()
 		if err != nil {
 			panic(err)
 		}
-		err = viper.Unmarshal(Conf.ServerClientConfig)
+		err = viper.Unmarshal(&Conf.ServerClientConfig)
 		if err != nil {
 			panic(err)
 		}

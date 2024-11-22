@@ -1,0 +1,10 @@
+proxy = false
+connTimeout = 10
+readTimeout = 10
+writeTimeout = 10
+keepAlive = 10
+maxIdleConns = 10
+maxIdleConnsPerHost = 10
+idleConnTimeout = 10
+tlsHandshakeTimeout = 10
+expectContinue = 10

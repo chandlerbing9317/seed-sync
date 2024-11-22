@@ -1,0 +1,5 @@
+path = "./.log"
+maxSize = 50
+maxBackups = 20
+maxAge = 30
+compress = true

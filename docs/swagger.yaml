@@ -1,0 +1,56 @@
+basePath: /
+definitions:
+  db.CookieCloudConfig:
+    properties:
+      p2p_password:
+        description: 端对端加密密码
+        type: string
+      sync_cron:
+        description: 同步cron表达式
+        type: string
+      url:
+        type: string
+      user_key:
+        description: 用户KEY
+        type: string
+    type: object
+info:
+  contact: {}
+  description: This is a seed sync server.
+  title: Seed Sync API
+  version: "1.0"
+paths:
+  /cookie-cloud/add-or-update:
+    post:
+      consumes:
+      - application/json
+      description: 添加或更新cookie cloud配置
+      parameters:
+      - description: cookie cloud配置
+        in: body
+        name: config
+        required: true
+        schema:
+          $ref: '#/definitions/db.CookieCloudConfig'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: 添加或更新cookie cloud配置
+      tags:
+      - cookie cloud
+  /cookie-cloud/get:
+    get:
+      description: 获取cookie cloud配置
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: 获取cookie cloud配置
+      tags:
+      - cookie cloud
+schemes:
+- http
+swagger: "2.0"

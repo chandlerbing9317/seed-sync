@@ -2,6 +2,7 @@ package downloader
 
 import (
 	"seed-sync/db"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -15,12 +16,14 @@ var downloaderDAO = &DownloaderDAO{
 }
 
 type DownloaderTable struct {
-	Id       int    `json:"id"`
-	Name     string `json:"name"`
-	Url      string `json:"url"`
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Type     string `json:"type"`
+	Id         int       `json:"id"`
+	Name       string    `json:"name"`
+	Url        string    `json:"url"`
+	Username   string    `json:"username"`
+	Password   string    `json:"password"`
+	Type       string    `json:"type"`
+	CreateTime time.Time `json:"create_time"`
+	UpdateTime time.Time `json:"update_time"`
 }
 
 func (DownloaderTable) TableName() string {
@@ -54,20 +57,29 @@ func (d *DownloaderDAO) DeleteDownloaderTx(tx *gorm.DB, name string) error {
 	return tx.Where("name = ?", name).Delete(&DownloaderTable{}).Error
 }
 
-func (d *DownloaderDAO) GetDownloader(name string) (*DownloaderTable, error) {
+func (d *DownloaderDAO) GetDownloader(name string) *DownloaderTable {
 	var downloader DownloaderTable
 	err := d.db.Where("name = ?", name).First(&downloader).Error
 	if err != nil {
-		return nil, err
+		return nil
 	}
-	return &downloader, nil
+	return &downloader
 }
 
-func (d *DownloaderDAO) GetAllDownloaders() ([]*DownloaderTable, error) {
-	var downloaders []*DownloaderTable
+func (d *DownloaderDAO) GetDownloaderById(id int64) *DownloaderTable {
+	var downloader DownloaderTable
+	err := d.db.Where("id = ?", id).First(&downloader).Error
+	if err != nil {
+		return nil
+	}
+	return &downloader
+}
+
+func (d *DownloaderDAO) GetAllDownloaders() []DownloaderTable {
+	var downloaders []DownloaderTable
 	err := d.db.Find(&downloaders).Error
 	if err != nil {
-		return nil, err
+		return nil
 	}
-	return downloaders, nil
+	return downloaders
 }

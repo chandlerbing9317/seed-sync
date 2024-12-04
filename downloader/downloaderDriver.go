@@ -5,6 +5,11 @@ import (
 	"seed-sync/common"
 )
 
+const (
+	DOWNLOADER_STATUS_AVAILABLE   = "available"
+	DOWNLOADER_STATUS_UNAVAILABLE = "unavailable"
+)
+
 type Downloader interface {
 	Type() string
 	Ping() error
@@ -28,6 +33,8 @@ type DownloaderConfig struct {
 
 type SeedHash struct {
 	InfoHash    string
+	Size        int64
+	Tags        []string
 	DownloadDir string
 }
 

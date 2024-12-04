@@ -17,7 +17,7 @@ func (hhanSite *HhanSite) SiteName() string {
 	return HhanSiteName
 }
 
-func NewHhanSite(siteInfo *site.SiteTable) (site.Site, error) {
+func NewHhanSite(siteInfo *site.SiteInfo) (site.Site, error) {
 	//先实例化父类
 	nexusSite, err := NewNexusSite(siteInfo)
 	if err != nil {

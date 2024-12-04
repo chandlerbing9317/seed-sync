@@ -13,7 +13,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
-	"net/http"
+	"seed-sync/common"
 	"strings"
 	"sync"
 )
@@ -98,7 +98,8 @@ func (c *CookieCloudClient) GetCookie() (*CookieCloudResponse, error) {
 
 	url := c.config.Url + "get/" + c.config.UserKey
 
-	res, err := http.Get(url)
+	client := common.DefaultHttpClient
+	res, err := client.Get(url)
 	if err != nil {
 		return nil, err
 	}

@@ -4,7 +4,6 @@ import "time"
 
 // http client 配置
 type HttpClientConfig struct {
-	Proxy               bool          `mapstructure:"proxy"`
 	ConnTimeout         time.Duration `mapstructure:"connTimeout"`
 	ReadTimeout         time.Duration `mapstructure:"readTimeout"`
 	WriteTimeout        time.Duration `mapstructure:"writeTimeout"`

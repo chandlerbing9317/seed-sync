@@ -13,17 +13,13 @@ type NexusSite struct {
 
 // nexus实现接口
 func (nexusSite *NexusSite) GetDownloadUrl(torrentId int) string {
-	return common.Https + nexusSite.SiteInfo.Host + fmt.Sprintf(nexusSite.SiteInfo.DownloadUrl, torrentId)
+	return common.Https + nexusSite.SiteInfo.Host + fmt.Sprintf(nexusSite.BaseSite.Config.DownloadTorrentUrl, torrentId)
 }
 func (nexusSite *NexusSite) GetPingUrl() string {
-	return common.Https + nexusSite.SiteInfo.Host + nexusSite.SiteInfo.PingUrl
+	return common.Https + nexusSite.SiteInfo.Host + nexusSite.BaseSite.Config.PingUrl
 }
 
-func (nexusSite *NexusSite) GetSeedListUrl(page int) string {
-	return common.Https + nexusSite.SiteInfo.Host + fmt.Sprintf(nexusSite.SiteInfo.SeedListUrl, page)
-}
-
-func NewNexusSite(siteInfo *site.SiteTable) (site.Site, error) {
+func NewNexusSite(siteInfo *site.SiteInfo) (site.Site, error) {
 	return &NexusSite{
 		BaseSite: site.NewBaseSite(siteInfo),
 	}, nil

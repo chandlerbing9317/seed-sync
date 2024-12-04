@@ -2,11 +2,10 @@ package router
 
 import (
 	"seed-sync/cookieCloud"
+	"seed-sync/downloader"
 	"seed-sync/router/middleware"
 
 	"github.com/gin-gonic/gin"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 func InitRouter() *gin.Engine {
@@ -20,16 +19,6 @@ func InitRouter() *gin.Engine {
 	router.Use(middleware.TraceLogger())
 	router.Use(middleware.Recovery())
 
-	// Swagger
-	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
-	// 健康检查
-	// @Summary      健康检查
-	// @Description  服务健康检查接口
-	// @Tags         系统
-	// @Produce      json
-	// @Success      200  {object}  gin.H
-	// @Router       /ping [get]
 	router.GET("/ping", func(ctx *gin.Context) {
 		ctx.JSON(200, gin.H{"message": "pong"})
 	})
@@ -37,6 +26,10 @@ func InitRouter() *gin.Engine {
 	//cookie cloud相关api
 	router.GET("/cookie-cloud/get", cookieCloud.GetCookieCloudConfig)
 	router.POST("/cookie-cloud/create-or-update", cookieCloud.CreateOrUpdateCookieCloud)
+
+	//下载器相关api
+	router.POST("/downloader/create", downloader.CreateDownloader)
+	router.GET("/downloader/list", downloader.GetDownloaderList)
 
 	return router
 }

@@ -37,3 +37,9 @@ const (
 	DOWNLOADER_TYPE_TRANSMISSION = "transmission"
 	DOWNLOADER_TYPE_QBITTORRENT  = "qbittorrent"
 )
+
+// seed sync task status
+const (
+	SEED_SYNC_TASK_STATUS_USED = "USED"
+	SEED_SYNC_TASK_STATUS_STOP = "STOP"
+)

@@ -1,8 +1,8 @@
 proxy = false
-connTimeout = 10
-readTimeout = 10
-writeTimeout = 10
-keepAlive = 10
+connTimeout = 60
+readTimeout = 60
+writeTimeout = 60
+keepAlive = 60
 maxIdleConns = 10
 maxIdleConnsPerHost = 10
 idleConnTimeout = 10

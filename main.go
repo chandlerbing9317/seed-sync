@@ -4,8 +4,6 @@ import (
 	"seed-sync/log"
 	"seed-sync/router"
 
-	_ "seed-sync/docs"
-
 	"go.uber.org/zap"
 )
 

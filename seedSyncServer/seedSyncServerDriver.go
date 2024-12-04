@@ -11,7 +11,6 @@ import (
 
 type ServerClient struct {
 	ServerConfig *config.ServerConfig
-	client       *http.Client
 }
 
 var SeedSyncServerClient *ServerClient
@@ -22,8 +21,6 @@ const (
 	CHECK_USER_URL          = "/user/check"
 )
 
-// 与seed-sync-server通信的客户端
-// 需要建立可复用的http client 避免服务端网络开销过大
 func init() {
 	SeedSyncServerClient, _ = newServerClient()
 }
@@ -31,7 +28,6 @@ func init() {
 func newServerClient() (*ServerClient, error) {
 	return &ServerClient{
 		ServerConfig: &config.Conf.ServerConfig,
-		client:       common.NewHttpClient(config.Conf.ServerClientConfig),
 	}, nil
 }
 
@@ -42,7 +38,7 @@ func (s *ServerClient) GetSupportedSites(page int, pageSize int) (*common.PageRe
 	if err != nil {
 		return nil, err
 	}
-	resp, err := s.client.Do(req)
+	resp, err := common.DefaultHttpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +63,7 @@ func (s *ServerClient) SyncSeed(request *SeedSyncRequest) (map[string][]SeedSync
 		return nil, err
 	}
 	req.Header.Add("Content-Type", "application/json")
-	resp, err := s.client.Do(req)
+	resp, err := common.DefaultHttpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +87,7 @@ func (s *ServerClient) CheckUser() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	resp, err := s.client.Do(req)
+	resp, err := common.DefaultHttpClient.Do(req)
 	if err != nil {
 		return false, err
 	}

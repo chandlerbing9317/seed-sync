@@ -7,6 +7,19 @@ import (
 	"time"
 )
 
+
+//全局http client
+//可复用，为避免频繁创建http client 导致服务端网络开销过大
+var (
+	DefaultHttpClient *http.Client
+	ProxyHttpClient   *http.Client
+)
+
+func init() {
+	DefaultHttpClient = NewHttpClient(config.Conf.HttpClientConfig, false)
+	ProxyHttpClient = NewHttpClient(config.Conf.HttpClientConfig, true)
+}
+
 const (
 	DefaultConnTimeout         = 30 * time.Second
 	DefaultReadTimeout         = 30 * time.Second
@@ -22,11 +35,11 @@ const (
 )
 
 // 按配置创建http client
-func NewHttpClient(config config.HttpClientConfig) *http.Client {
+func NewHttpClient(config config.HttpClientConfig, isProxy bool) *http.Client {
 	config = getHttpClientConfig(config)
 
 	transport := &http.Transport{
-		Proxy: GetProxyFunc(config.Proxy),
+		Proxy: GetProxyFunc(isProxy),
 		DialContext: (&net.Dialer{
 			Timeout:   config.ConnTimeout * time.Second, // 连接建立超时
 			KeepAlive: config.KeepAlive * time.Second,

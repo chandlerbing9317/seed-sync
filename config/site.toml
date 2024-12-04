@@ -1,0 +1,34 @@
+# 基础配置，所有站点的默认配置
+[baseConfig]
+userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36"
+
+# 驱动配置，按照不同站点程序的特点配置
+[driverConfigs]
+# Nexus驱动配置
+[driverConfigs.nexus]
+driverType = "nexus"
+downloadTorrentUrl = "/download.php?id={torrentId}"
+seedDetailUrl = "/details.php?id={torrentId}&hit=1"
+
+# Unit3d驱动配置
+[driverConfigs.unit3d]
+driverType = "unit3d"
+downloadTorrentUrl = "/torrents/download/{torrentId}.{rssKey}"
+seedDetailUrl = "/api/torrents/{torrentId}?api_token={apiToken}"
+
+# 具体站点配置
+[siteConfigs]
+# hhanclub站点配置
+[siteConfigs.hhanclub]
+driverType = "nexus"
+siteName = "hhanclub"
+
+# hdhome站点配置
+[siteConfigs.hdhome]
+driverType = "nexus"
+siteName = "hdhome"
+
+# monika站点配置
+[siteConfigs.monikadesign]
+driverType = "unit3d"
+siteName = "monikadesign"

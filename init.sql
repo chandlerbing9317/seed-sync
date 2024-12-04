@@ -34,22 +34,15 @@ CREATE TABLE IF NOT EXISTS seed_sync_site
     show_name       TEXT,
     `order`         INTEGER NOT NULL,
     host            TEXT,
-    domains         TEXT,
     cookie          TEXT,
+    api_token       TEXT,
     passkey         TEXT,
     rss_key         TEXT,
-  api_token       TEXT,
     user_agent      TEXT,
     custom_header   TEXT,
-    seed_list_url   TEXT,
-    rss_url         TEXT,
-    detail_url      TEXT,
-    download_url    TEXT,
-    ping_url        TEXT,
     proxy           BOOLEAN NOT NULL,
-    timeout         INTEGER,
-    is_override     BOOLEAN NOT NULL,
     is_active       BOOLEAN NOT NULL,
+    timeout         INTEGER NOT NULL,
     create_time     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     update_time     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -91,3 +84,34 @@ CREATE TABLE IF NOT EXISTS seed_sync_schedule_task
 );
 -- 创建索引
 CREATE UNIQUE INDEX IF NOT EXISTS idx_seed_sync_schedule_task_task_name ON seed_sync_schedule_task(task_name);
+
+-- 下载器表
+CREATE TABLE IF NOT EXISTS seed_sync_downloader
+(
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    name            TEXT NOT NULL,
+    url             TEXT NOT NULL,
+    username        TEXT,
+    password        TEXT,
+    type            TEXT NOT NULL,
+    create_time     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+-- 创建索引
+CREATE UNIQUE INDEX IF NOT EXISTS idx_seed_sync_downloader_name ON seed_sync_downloader(name);
+
+-- 辅种任务表
+CREATE TABLE IF NOT EXISTS seed_sync_seed_task
+(
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_name       TEXT NOT NULL,
+    site_list       TEXT,
+    downloader_id   INTEGER NOT NULL,
+    exclude_path    TEXT,
+    exclude_tag     TEXT,
+    min_size        INTEGER,
+    add_tag         TEXT,
+    status          TEXT NOT NULL,
+    create_time     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+)

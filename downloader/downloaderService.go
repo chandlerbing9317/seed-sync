@@ -2,15 +2,12 @@ package downloader
 
 import (
 	"fmt"
-	"seed-sync/log"
 	"sync"
-
-	"go.uber.org/zap"
 )
 
 type downloaderService struct {
 	downloaderDAO *DownloaderDAO
-	downloaders   map[string]*Downloader
+	downloaders   map[string]Downloader
 	lock          sync.Mutex
 }
 
@@ -20,22 +17,22 @@ var DownloaderService *downloaderService
 func init() {
 	DownloaderService = &downloaderService{
 		downloaderDAO: downloaderDAO,
-		downloaders:   make(map[string]*Downloader),
+		downloaders:   make(map[string]Downloader),
 		lock:          sync.Mutex{},
 	}
-	downloaders, err := DownloaderService.downloaderDAO.GetAllDownloaders()
-	if err != nil {
-		log.Error("get all downloaders error", zap.Error(err))
-		panic(err)
-	}
+	downloaders := DownloaderService.downloaderDAO.GetAllDownloaders()
+	//遍历数据库的下载器并初始化保存
 	for _, downloader := range downloaders {
-		DownloaderService.CreateDownloader(&DownloaderCreateRequest{
-			Name:     downloader.Name,
+		d, err := NewDownloader(&DownloaderConfig{
+			Type:     downloader.Type,
 			Url:      downloader.Url,
 			Username: downloader.Username,
 			Password: downloader.Password,
-			Type:     downloader.Type,
 		})
+		if err != nil {
+			panic(err)
+		}
+		DownloaderService.downloaders[downloader.Name] = d
 	}
 }
 
@@ -47,13 +44,17 @@ func (service *downloaderService) CreateDownloader(request *DownloaderCreateRequ
 		return fmt.Errorf("downloader already exists: %s", request.Name)
 	}
 	tx := service.downloaderDAO.db.Begin()
-	service.downloaderDAO.AddDownloaderTx(tx, &DownloaderTable{
+	err := service.downloaderDAO.AddDownloaderTx(tx, &DownloaderTable{
 		Name:     request.Name,
 		Url:      request.Url,
 		Username: request.Username,
 		Password: request.Password,
 		Type:     request.Type,
 	})
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
 	downloader, err := NewDownloader(&DownloaderConfig{
 		Type:     request.Type,
 		Url:      request.Url,
@@ -64,7 +65,11 @@ func (service *downloaderService) CreateDownloader(request *DownloaderCreateRequ
 		tx.Rollback()
 		return err
 	}
-	service.downloaders[request.Name] = &downloader
+	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	service.downloaders[request.Name] = downloader
 	return nil
 }
 
@@ -80,6 +85,12 @@ func (service *downloaderService) DeleteDownloader(name string) error {
 	return nil
 }
 
+func (service *downloaderService) GetDownloaderList() []DownloaderTable {
+	service.lock.Lock()
+	defer service.lock.Unlock()
+	return service.downloaderDAO.GetAllDownloaders()
+}
+
 // 更新下载器
 func (service *downloaderService) UpdateDownloader(request *DownloaderCreateRequest) error {
 	service.lock.Lock()
@@ -93,4 +104,19 @@ func (service *downloaderService) UpdateDownloader(request *DownloaderCreateRequ
 		return err
 	}
 	return service.CreateDownloader(request)
+}
+
+// 获取下载器
+func (service *downloaderService) GetDownloaderById(id int64) (Downloader, error) {
+	service.lock.Lock()
+	defer service.lock.Unlock()
+	downloader := service.downloaderDAO.GetDownloaderById(id)
+	if downloader == nil {
+		return nil, fmt.Errorf("未找到下载器，下载器id: %d", id)
+	}
+	d, ok := service.downloaders[downloader.Name]
+	if !ok {
+		return nil, fmt.Errorf("未找到下载器，下载器id: %d", id)
+	}
+	return d, nil
 }

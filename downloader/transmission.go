@@ -56,8 +56,10 @@ type TransmissionClient struct {
 }
 
 type TransmissionTorrentSeedHash struct {
-	InfoHash    string `json:"hashString"`
-	DownloadDir string `json:"downloadDir"`
+	InfoHash    string   `json:"hashString"`
+	DownloadDir string   `json:"downloadDir"`
+	TotalSize   int64    `json:"totalSize"`
+	Labels      []string `json:"labels"`
 }
 
 func NewTransmissionClient(config *DownloaderConfig) (*TransmissionClient, error) {
@@ -92,7 +94,7 @@ func (t *TransmissionClient) Ping() error {
 
 func (t *TransmissionClient) GetSeedsHash() ([]SeedHash, error) {
 	arguments := map[string]any{
-		"fields": []string{"id", "hashString", "downloadDir"},
+		"fields": []string{"id", "hashString", "downloadDir", "totalSize", "labels"},
 	}
 	response, err := t.doRequest(MethodTorrentGet, arguments)
 	if err != nil {
@@ -102,7 +104,12 @@ func (t *TransmissionClient) GetSeedsHash() ([]SeedHash, error) {
 	hashes := make([]SeedHash, 0)
 	for _, arg := range response.Arguments {
 		hash := arg.(TransmissionTorrentSeedHash)
-		hashes = append(hashes, SeedHash(hash))
+		hashes = append(hashes, SeedHash{
+			InfoHash:    hash.InfoHash,
+			Size:        hash.TotalSize,
+			Tags:        hash.Labels,
+			DownloadDir: hash.DownloadDir,
+		})
 	}
 	return hashes, nil
 }
@@ -146,13 +153,14 @@ func (t *TransmissionClient) doRequest(method string, arguments map[string]any) 
 		Arguments: arguments,
 		Tag:       t.getTag(),
 	}
-	req, err := common.GetRequest("POST", t.config.Url, t.getRequestHeader(), request)
+	req, err := common.GetRequest("POST", t.config.Url+"/transmission/rpc", t.getRequestHeader(), request)
 	if err != nil {
 		return nil, err
 	}
 	req.SetBasicAuth(t.config.Username, t.config.Password)
 	//todo 这里可能考虑使用可复用的http_client
-	httpResp, err := http.DefaultClient.Do(req)
+	client := common.DefaultHttpClient
+	httpResp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}

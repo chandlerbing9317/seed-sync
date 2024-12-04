@@ -24,22 +24,15 @@ type SiteTable struct {
 	ShowName     string    `json:"showName" gorm:"column:show_name"`
 	Order        int       `json:"order" gorm:"index;not null;column:order"`
 	Host         string    `json:"host" gorm:"column:host"`
-	Domains      string    `json:"domains" gorm:"column:domains"`
 	Cookie       string    `json:"cookie" gorm:"column:cookie"`
 	ApiToken     string    `json:"apiToken" gorm:"column:api_token"`
 	Passkey      string    `json:"passkey" gorm:"column:passkey"`
 	RssKey       string    `json:"rssKey" gorm:"column:rss_key"`
 	UserAgent    string    `json:"userAgent" gorm:"column:user_agent"`
 	CustomHeader string    `json:"customHeader" gorm:"column:custom_header"`
-	SeedListUrl  string    `json:"seedListUrl" gorm:"column:seed_list_url"`
-	RssUrl       string    `json:"rssUrl" gorm:"column:rss_url"`
-	DetailUrl    string    `json:"detailUrl" gorm:"column:detail_url"`
-	DownloadUrl  string    `json:"downloadUrl" gorm:"column:download_url"`
-	PingUrl      string    `json:"pingUrl" gorm:"column:ping_url"`
 	Proxy        bool      `json:"proxy" gorm:"column:proxy"`
-	Timeout      int       `json:"timeout" gorm:"column:timeout"`        // 单位：秒
-	IsOverride   bool      `json:"isOverride" gorm:"column:is_override"` // 是否使用服务端配置覆盖
-	IsActive     bool      `json:"isActive" gorm:"column:is_active"`     // 是否启用
+	IsActive     bool      `json:"isActive" gorm:"column:is_active"` // 是否启用
+	Timeout      int       `json:"timeout" gorm:"column:timeout"`    //单位秒
 	CreateTime   time.Time `json:"createTime" gorm:"column:create_time"`
 	UpdateTime   time.Time `json:"updateTime" gorm:"column:update_time"`
 }
@@ -51,7 +44,7 @@ func (SiteTable) TableName() string {
 
 // 站点流控表
 type SiteFlowControl struct {
-	ID         int64     `json:"id" gorm:"primaryKey;autoIncrement"`
+	ID         int64     `json:"-"`
 	SiteName   string    `json:"site_name" gorm:"column:site_name"`
 	MaxPerMin  int       `json:"max_per_min" gorm:"column:max_per_min"`
 	MaxPerHour int       `json:"max_per_hour" gorm:"column:max_per_hour"`
@@ -73,73 +66,94 @@ func (SiteFlowControl) TableName() string {
 	return "seed_sync_site_flow_control"
 }
 
-// 获取所有站点
-func (dao *SiteDAO) GetAllSites() ([]*SiteTable, error) {
-	var sites []*SiteTable
-	if err := dao.db.Find(&sites).Error; err != nil {
-		return nil, err
-	}
-	return sites, nil
-}
-
-// 根据站点名查询站点流控
-func (dao *SiteDAO) GetSiteFlowControl(siteName string) (*SiteFlowControl, error) {
-	var siteFlowControl SiteFlowControl
-	if err := dao.db.Where("site_name = ?", siteName).First(&siteFlowControl).Error; err != nil {
-		return nil, err
-	}
-	return &siteFlowControl, nil
-}
-
-func (dao *SiteDAO) UpdateSite(site *SiteTable) error {
-	return dao.db.Save(site).Error
-}
-
-func (dao *SiteDAO) UpdateBatchSite(sites []*SiteTable) error {
-	return dao.db.Save(sites).Error
-}
-
-// 创建/更新一个站点
-func (dao *SiteDAO) CreateOrUpdateSiteWithTx(tx *gorm.DB, site *SiteTable, siteFlowControl *SiteFlowControl) error {
-	if siteFlowControl == nil {
-		siteFlowControl = DefaultSiteFlowControl()
-	}
-	siteFlowControl.SiteName = site.SiteName
-
+// 创建一个站点
+func (dao *SiteDAO) AddSite(site *SiteTable, siteFlowControl *SiteFlowControl) error {
+	// 开启事务
+	tx := dao.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
 		}
 	}()
-
-	if err := tx.Error; err != nil {
+	if err := tx.Create(site).Error; err != nil {
+		tx.Rollback()
 		return err
 	}
-
-	// 使用 name 字段查找并更新站点
-	result := tx.Where("name = ?", site.SiteName).Updates(site)
-	if result.RowsAffected == 0 {
-		// 如果没有更新到记录，说明是新站点，执行创建
-		if err := tx.Create(site).Error; err != nil {
-			tx.Rollback()
-			return err
-		}
-	} else if result.Error != nil {
+	if err := tx.Create(siteFlowControl).Error; err != nil {
 		tx.Rollback()
-		return result.Error
+		return err
 	}
-
-	// 更新站点流控
-	result = tx.Where("site_name = ?", siteFlowControl.SiteName).Updates(siteFlowControl)
-	if result.RowsAffected == 0 {
-		if err := tx.Create(siteFlowControl).Error; err != nil {
-			tx.Rollback()
-			return err
-		}
-	} else if result.Error != nil {
-		tx.Rollback()
-		return result.Error
-	}
-
 	return tx.Commit().Error
+}
+
+// 更新一个站点
+func (dao *SiteDAO) UpdateSite(site *SiteTable, siteFlowControl *SiteFlowControl) error {
+	tx := dao.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+	if err := tx.Save(site).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	if err := tx.Save(siteFlowControl).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	return tx.Commit().Error
+}
+
+// 获取站点详情
+func (dao *SiteDAO) GetSiteInfo(siteName string) *SiteInfo {
+	var siteTable SiteTable
+	if err := dao.db.Where("site_name = ?", siteName).First(&siteTable).Error; err != nil {
+		return nil
+	}
+	var siteFlowControl SiteFlowControl
+	if err := dao.db.Where("site_name = ?", siteName).First(&siteFlowControl).Error; err != nil {
+		return nil
+	}
+	return getSiteInfo(&siteTable, &siteFlowControl)
+}
+
+func (dao *SiteDAO) GetAllSites() ([]*SiteInfo, error) {
+	var siteTables []*SiteTable
+	if err := dao.db.Find(&siteTables).Error; err != nil {
+		return nil, err
+	}
+	var siteInfos []*SiteInfo
+	for _, siteTable := range siteTables {
+		var siteFlowControl SiteFlowControl
+		if err := dao.db.Where("site_name = ?", siteTable.SiteName).First(&siteFlowControl).Error; err != nil {
+			return nil, err
+		}
+		siteInfos = append(siteInfos, getSiteInfo(siteTable, &siteFlowControl))
+	}
+	return siteInfos, nil
+}
+
+func getSiteInfo(siteTable *SiteTable, siteFlowControl *SiteFlowControl) *SiteInfo {
+	return &SiteInfo{
+		ID:           siteTable.ID,
+		SiteName:     siteTable.SiteName,
+		ShowName:     siteTable.ShowName,
+		Order:        siteTable.Order,
+		Host:         siteTable.Host,
+		Cookie:       siteTable.Cookie,
+		ApiToken:     siteTable.ApiToken,
+		Passkey:      siteTable.Passkey,
+		RssKey:       siteTable.RssKey,
+		UserAgent:    siteTable.UserAgent,
+		CustomHeader: siteTable.CustomHeader,
+		Proxy:        siteTable.Proxy,
+		Timeout:      siteTable.Timeout,
+		IsActive:     siteTable.IsActive,
+		MaxPerMin:    siteFlowControl.MaxPerMin,
+		MaxPerHour:   siteFlowControl.MaxPerHour,
+		MaxPerDay:    siteFlowControl.MaxPerDay,
+		CreateTime:   siteTable.CreateTime,
+		UpdateTime:   siteTable.UpdateTime,
+	}
 }

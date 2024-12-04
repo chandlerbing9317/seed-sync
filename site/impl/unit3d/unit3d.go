@@ -11,11 +11,10 @@ type Unit3dSite struct {
 	*site.BaseSite
 }
 
-
 // unit3d实现接口
 func (unit3dSite *Unit3dSite) GetDownloadUrl(torrentId int) string {
-	return common.Https + unit3dSite.SiteInfo.Host + fmt.Sprintf(unit3dSite.SiteInfo.DownloadUrl, torrentId, unit3dSite.SiteInfo.RssKey)
+	return common.Https + unit3dSite.SiteInfo.Host + fmt.Sprintf(unit3dSite.BaseSite.Config.DownloadTorrentUrl, torrentId, unit3dSite.SiteInfo.RssKey)
 }
 func (unit3dSite *Unit3dSite) GetPingUrl() string {
-	return common.Https + unit3dSite.SiteInfo.Host + unit3dSite.SiteInfo.PingUrl
+	return common.Https + unit3dSite.SiteInfo.Host + unit3dSite.BaseSite.Config.PingUrl
 }

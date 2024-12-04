@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"seed-sync/common"
 	"seed-sync/config"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -20,12 +20,14 @@ type Site interface {
 
 // 基础站点，对BaseSite接口的实现
 type BaseSite struct {
-	SiteInfo *SiteTable
+	SiteInfo *SiteInfo
+	Config   config.SiteBaseConfig
 }
 
-func NewBaseSite(siteInfo *SiteTable) *BaseSite {
+func NewBaseSite(siteInfo *SiteInfo) *BaseSite {
 	return &BaseSite{
 		SiteInfo: siteInfo,
+		Config:   config.Conf.SiteConfig.GetSiteConfig(siteInfo.SiteName),
 	}
 }
 
@@ -91,34 +93,18 @@ func (baseSite *BaseSite) GetHttpHeader() map[string]string {
 
 // 默认http_client
 func (baseSite *BaseSite) GetRequestClient() (*http.Client, error) {
-	var transport *http.Transport
-
-	//处理代理
+	var baseClient *http.Client
 	if baseSite.SiteInfo.Proxy {
-		proxyURL, err := url.Parse(config.Conf.ProxyConfig.ProxyURL)
-		if err != nil {
-			return nil, err
-		}
-
-		if config.Conf.ProxyConfig.ProxyUsername != "" {
-			proxyURL.User = url.UserPassword(
-				config.Conf.ProxyConfig.ProxyUsername,
-				config.Conf.ProxyConfig.ProxyPassword,
-			)
-		}
-
-		transport = &http.Transport{
-			Proxy: http.ProxyURL(proxyURL),
-		}
+		baseClient = common.ProxyHttpClient
 	} else {
-		transport = &http.Transport{}
+		baseClient = common.DefaultHttpClient
 	}
 
 	//处理header
 	headers := baseSite.GetHttpHeader()
 	customTransport := &roundTripperWithHeaders{
 		headers:  headers,
-		original: transport,
+		original: baseClient.Transport,
 	}
 
 	return &http.Client{
@@ -134,7 +120,11 @@ func (baseSite *BaseSite) SiteName() string {
 
 // 父类接口
 func (baseSite *BaseSite) GetDownloadUrl(torrentId int) string {
-	return ""
+	params := map[string]string{
+		"torrentId": strconv.Itoa(torrentId),
+		"passkey":   baseSite.SiteInfo.Passkey,
+	}
+	return common.FormatUrlTemplate(baseSite.Config.DownloadTorrentUrl, params)
 }
 
 // 父类接口

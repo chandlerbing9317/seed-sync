@@ -7,15 +7,17 @@ import (
 	"net/http"
 	"net/url"
 	"seed-sync/config"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/robfig/cron/v3"
 )
 
-func GetProxyFunc(proxy bool) func(req *http.Request) (*url.URL, error) {
+func GetProxyFunc(isProxy bool) func(req *http.Request) (*url.URL, error) {
 	return func(req *http.Request) (*url.URL, error) {
-		if proxy {
+		if isProxy {
 			proxy := config.Conf.ProxyConfig
 			if proxy.ProxyUsername != "" && proxy.ProxyPassword != "" {
 				proxyURL, err := url.Parse(proxy.ProxyURL)
@@ -29,6 +31,14 @@ func GetProxyFunc(proxy bool) func(req *http.Request) (*url.URL, error) {
 		}
 		return nil, nil
 	}
+}
+func HasSameElement[T comparable](list []T, elements []T) bool {
+	for _, element := range elements {
+		if slices.Contains(list, element) {
+			return true
+		}
+	}
+	return false
 }
 
 func GetRequest(method string, url string, header map[string]string, body any) (*http.Request, error) {
@@ -49,6 +59,14 @@ func GetRequest(method string, url string, header map[string]string, body any) (
 		req.Header.Set(k, v)
 	}
 	return req, nil
+}
+
+func FormatUrlTemplate(template string, params map[string]string) string {
+	result := template
+	for key, value := range params {
+		result = strings.ReplaceAll(result, "{"+key+"}", value)
+	}
+	return result
 }
 
 func GetNextExecuteTime(cronExpr string) (time.Time, error) {

@@ -29,8 +29,10 @@ type QbittorrentClient struct {
 }
 
 type QbittorrentTorrentSeedHash struct {
-	InfoHash    string `json:"hash"`
-	DownloadDir string `json:"save_path"`
+	InfoHash    string   `json:"hash"`
+	DownloadDir string   `json:"save_path"`
+	Tags        []string `json:"tags"`
+	Size        int64    `json:"size"`
 }
 
 func NewQbittorrentClient(config *DownloaderConfig) (*QbittorrentClient, error) {
@@ -74,7 +76,12 @@ func (q *QbittorrentClient) GetSeedsHash() ([]SeedHash, error) {
 	//转换为SeedHash
 	seeds := make([]SeedHash, len(torrents))
 	for i, torrent := range torrents {
-		seeds[i] = SeedHash(torrent)
+		seeds[i] = SeedHash{
+			InfoHash:    torrent.InfoHash,
+			Size:        torrent.Size,
+			Tags:        torrent.Tags,
+			DownloadDir: torrent.DownloadDir,
+		}
 	}
 	return seeds, nil
 }
@@ -149,7 +156,8 @@ func (q *QbittorrentClient) login() error {
 		return err
 	}
 	//发起请求
-	response, err := http.DefaultClient.Do(request)
+	client := common.DefaultHttpClient
+	response, err := client.Do(request)
 	if err != nil {
 		return err
 	}
@@ -178,7 +186,8 @@ func (q *QbittorrentClient) doRequest(method string, requestUrl string, params m
 // 统一请求处。设置cookie，如果cookie失效就重新登录
 func (q *QbittorrentClient) doRequestWithCookie(request *http.Request) ([]byte, error) {
 	request.Header.Set("Cookie", q.cookie)
-	response, err := http.DefaultClient.Do(request)
+	client := common.DefaultHttpClient
+	response, err := client.Do(request)
 	if err != nil {
 		return nil, err
 	}

@@ -3,6 +3,7 @@ package common
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -81,6 +82,46 @@ func GetNextExecuteTime(cronExpr string) (time.Time, error) {
 	// 计算下一次执行时间
 	next := schedule.Next(time.Now())
 	return next, nil
+}
+
+// ValidateURL 校验URL是否合法
+func ValidateURL(urlStr string) error {
+	if strings.TrimSpace(urlStr) == "" {
+		return fmt.Errorf("URL不能为空")
+	}
+
+	u, err := url.Parse(urlStr)
+	if err != nil {
+		return fmt.Errorf("URL格式不正确: %v", err)
+	}
+
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("URL必须使用http或https协议")
+	}
+
+	if u.Host == "" {
+		return fmt.Errorf("URL必须包含主机名")
+	}
+
+	return nil
+}
+
+// NormalizeURL 规范化URL
+func NormalizeURL(urlStr string) (string, error) {
+	urlStr = strings.TrimSpace(urlStr)
+
+	u, err := url.Parse(urlStr)
+	if err != nil {
+		return "", fmt.Errorf("URL格式不正确: %v", err)
+	}
+
+	if u.Scheme == "" {
+		u.Scheme = "https"
+	}
+
+	u.Path = strings.TrimRight(u.Path, "/")
+
+	return u.String(), nil
 }
 
 type lockedRandomSource struct {

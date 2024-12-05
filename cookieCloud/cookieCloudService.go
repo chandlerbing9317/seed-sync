@@ -2,8 +2,12 @@ package cookieCloud
 
 import (
 	"errors"
+	"fmt"
+	"seed-sync/log"
 	"seed-sync/site"
 	"sync"
+
+	"go.uber.org/zap"
 )
 
 // 初始化且对外暴露的单例service
@@ -71,19 +75,19 @@ func (service *cookieCloudService) SyncCookieForSchedulerTask() error {
 	if err != nil {
 		return err
 	}
-	sites := make([]*site.SiteTable, 0, len(siteList))
-	for _, site := range siteList {
-		cookieStr, ok := cookie.GetCookieByDomain(site.Host)
+	var errs []error
+	for _, siteInfo := range siteList {
+		cookieStr, ok := cookie.GetCookieByDomain(siteInfo.Host)
 		if ok {
-			site.Cookie = cookieStr
-			sites = append(sites, site)
+			err = site.SiteService.UpdateCookie(siteInfo.SiteName, cookieStr)
+			if err != nil {
+				log.Error("更新站点cookie失败", zap.String("siteName", siteInfo.SiteName), zap.Error(err))
+				errs = append(errs, err)
+			}
 		}
 	}
-	if len(sites) > 0 {
-		err = site.SiteService.UpdateBatchSite(sites)
-		if err != nil {
-			return err
-		}
+	if len(errs) > 0 {
+		return fmt.Errorf("更新站点cookie失败: %v", errs)
 	}
 	return nil
 }

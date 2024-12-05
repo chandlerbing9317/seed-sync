@@ -18,11 +18,16 @@ func AddSite(ctx *gin.Context) {
 		ctx.JSON(200, common.FailResult("站点名不能为空"))
 		return
 	}
-	//todo: host(http格式校验)
-	if request.Host == "" {
-		ctx.JSON(200, common.FailResult("host不能为空"))
+	if err := common.ValidateURL(request.Host); err != nil {
+		ctx.JSON(200, common.FailResult("host格式不正确:"+err.Error()))
 		return
 	}
+	host, err := common.NormalizeURL(request.Host)
+	if err != nil {
+		ctx.JSON(200, common.FailResult("host格式不正确:"+err.Error()))
+		return
+	}
+	request.Host = host
 
 	if request.MaxPerMin <= 0 || request.MaxPerHour <= 0 || request.MaxPerDay <= 0 {
 		ctx.JSON(200, common.FailResult("每分钟、每小时、每天的最大请求数必须大于0"))
@@ -59,12 +64,16 @@ func UpdateSite(ctx *gin.Context) {
 		ctx.JSON(200, common.FailResult("站点名不能为空"))
 		return
 	}
-
-	// todo: host(http格式校验)
-	if request.Host == "" {
-		ctx.JSON(200, common.FailResult("host不能为空"))
+	if err := common.ValidateURL(request.Host); err != nil {
+		ctx.JSON(200, common.FailResult("host格式不正确:"+err.Error()))
 		return
 	}
+	host, err := common.NormalizeURL(request.Host)
+	if err != nil {
+		ctx.JSON(200, common.FailResult("host格式不正确:"+err.Error()))
+		return
+	}
+	request.Host = host
 	if request.MaxPerMin <= 0 || request.MaxPerHour <= 0 || request.MaxPerDay <= 0 {
 		ctx.JSON(200, common.FailResult("每分钟、每小时、每天的最大请求数必须大于0"))
 		return

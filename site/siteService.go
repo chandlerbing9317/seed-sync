@@ -173,3 +173,13 @@ func (service *siteService) BatchUpdateSiteOrders(updates []SiteOrderUpdateReque
 func (service *siteService) GetSiteList() ([]*SiteInfo, error) {
 	return service.siteDao.GetAllSites()
 }
+
+// 更新站点cookie
+func (service *siteService) UpdateCookie(siteName string, cookie string) error {
+	return service.siteDao.UpdateCookie(siteName, cookie)
+}
+
+func (service *siteService) Ping(siteName string) error {
+	siteClient := service.siteClientMap[siteName]
+	return siteClient.Ping()
+}

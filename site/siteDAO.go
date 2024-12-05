@@ -66,43 +66,38 @@ func (SiteFlowControl) TableName() string {
 	return "seed_sync_site_flow_control"
 }
 
-// 创建一个站点
-func (dao *SiteDAO) AddSite(site *SiteTable, siteFlowControl *SiteFlowControl) error {
-	// 开启事务
-	tx := dao.db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
+func (dao *SiteDAO) AddSiteTx(tx *gorm.DB, site *SiteTable, siteFlowControl *SiteFlowControl) error {
 	if err := tx.Create(site).Error; err != nil {
-		tx.Rollback()
 		return err
 	}
 	if err := tx.Create(siteFlowControl).Error; err != nil {
-		tx.Rollback()
 		return err
 	}
-	return tx.Commit().Error
+	return nil
 }
 
 // 更新一个站点
-func (dao *SiteDAO) UpdateSite(site *SiteTable, siteFlowControl *SiteFlowControl) error {
-	tx := dao.db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-	if err := tx.Save(site).Error; err != nil {
-		tx.Rollback()
+func (dao *SiteDAO) UpdateSiteBySiteNameTx(tx *gorm.DB, siteName string, site *SiteTable, siteFlowControl *SiteFlowControl) error {
+	if err := tx.Model(&SiteTable{}).Where("site_name = ?", siteName).Updates(site).Error; err != nil {
 		return err
 	}
-	if err := tx.Save(siteFlowControl).Error; err != nil {
-		tx.Rollback()
+	if err := tx.Model(&SiteFlowControl{}).Where("site_name = ?", siteName).Updates(siteFlowControl).Error; err != nil {
 		return err
 	}
-	return tx.Commit().Error
+	return nil
+}
+
+// GetMaxOrderTx 在事务中获取最大order
+func (dao *SiteDAO) GetMaxOrderTx(tx *gorm.DB) (int, error) {
+	var maxOrder struct {
+		MaxOrder int
+	}
+
+	err := tx.Model(&SiteTable{}).
+		Select("COALESCE(MAX(`order`), 0) as max_order").
+		Scan(&maxOrder).Error
+
+	return maxOrder.MaxOrder, err
 }
 
 // 获取站点详情
@@ -115,12 +110,12 @@ func (dao *SiteDAO) GetSiteInfo(siteName string) *SiteInfo {
 	if err := dao.db.Where("site_name = ?", siteName).First(&siteFlowControl).Error; err != nil {
 		return nil
 	}
-	return getSiteInfo(&siteTable, &siteFlowControl)
+	return GenerateSiteInfo(&siteTable, &siteFlowControl)
 }
 
 func (dao *SiteDAO) GetAllSites() ([]*SiteInfo, error) {
 	var siteTables []*SiteTable
-	if err := dao.db.Find(&siteTables).Error; err != nil {
+	if err := dao.db.Order("`order` ASC").Find(&siteTables).Error; err != nil {
 		return nil, err
 	}
 	var siteInfos []*SiteInfo
@@ -129,31 +124,20 @@ func (dao *SiteDAO) GetAllSites() ([]*SiteInfo, error) {
 		if err := dao.db.Where("site_name = ?", siteTable.SiteName).First(&siteFlowControl).Error; err != nil {
 			return nil, err
 		}
-		siteInfos = append(siteInfos, getSiteInfo(siteTable, &siteFlowControl))
+		siteInfos = append(siteInfos, GenerateSiteInfo(siteTable, &siteFlowControl))
 	}
 	return siteInfos, nil
 }
 
-func getSiteInfo(siteTable *SiteTable, siteFlowControl *SiteFlowControl) *SiteInfo {
-	return &SiteInfo{
-		ID:           siteTable.ID,
-		SiteName:     siteTable.SiteName,
-		ShowName:     siteTable.ShowName,
-		Order:        siteTable.Order,
-		Host:         siteTable.Host,
-		Cookie:       siteTable.Cookie,
-		ApiToken:     siteTable.ApiToken,
-		Passkey:      siteTable.Passkey,
-		RssKey:       siteTable.RssKey,
-		UserAgent:    siteTable.UserAgent,
-		CustomHeader: siteTable.CustomHeader,
-		Proxy:        siteTable.Proxy,
-		Timeout:      siteTable.Timeout,
-		IsActive:     siteTable.IsActive,
-		MaxPerMin:    siteFlowControl.MaxPerMin,
-		MaxPerHour:   siteFlowControl.MaxPerHour,
-		MaxPerDay:    siteFlowControl.MaxPerDay,
-		CreateTime:   siteTable.CreateTime,
-		UpdateTime:   siteTable.UpdateTime,
-	}
+func (dao *SiteDAO) BatchUpdateSiteOrders(updates []SiteOrderUpdateRequest) error {
+	return dao.db.Transaction(func(tx *gorm.DB) error {
+		for _, update := range updates {
+			if err := tx.Model(&SiteTable{}).
+				Where("site_name = ?", update.SiteName).
+				Update("order", update.NewOrder).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }

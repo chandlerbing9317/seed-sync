@@ -10,7 +10,7 @@ type SiteFactory struct {
 	mu               sync.RWMutex
 }
 
-type SiteConstructor func(siteInfo *SiteInfo) (Site, error)
+type SiteConstructor func(siteInfo *SiteInfo) (SiteClient, error)
 
 var Factory *SiteFactory = &SiteFactory{
 	siteConstructors: make(map[string]SiteConstructor),
@@ -24,7 +24,7 @@ func (f *SiteFactory) RegisterSite(siteName string, constructor SiteConstructor)
 }
 
 // 创建站点
-func (f *SiteFactory) CreateSite(siteInfo *SiteInfo) (Site, error) {
+func (f *SiteFactory) CreateSite(siteInfo *SiteInfo) (SiteClient, error) {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 	constructor, ok := f.siteConstructors[siteInfo.SiteName]

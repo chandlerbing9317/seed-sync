@@ -19,7 +19,7 @@ func (nexusSite *NexusSite) GetPingUrl() string {
 	return common.Https + nexusSite.SiteInfo.Host + nexusSite.BaseSite.Config.PingUrl
 }
 
-func NewNexusSite(siteInfo *site.SiteInfo) (site.Site, error) {
+func NewNexusSite(siteInfo *site.SiteInfo) (site.SiteClient, error) {
 	return &NexusSite{
 		BaseSite: site.NewBaseSite(siteInfo),
 	}, nil

@@ -12,8 +12,9 @@ import (
 )
 
 // 站点接口 所有站点都实现该接口
-type Site interface {
+type SiteClient interface {
 	SiteName() string
+	Update(siteInfo *SiteInfo) error
 	DownloadSeed(torrentId int) ([]byte, error)
 	Ping() error
 }
@@ -49,6 +50,11 @@ func (baseSite *BaseSite) DownloadSeed(torrentId int) ([]byte, error) {
 		return nil, err
 	}
 	return body, nil
+}
+
+func (baseSite *BaseSite) Update(siteInfo *SiteInfo) error {
+	baseSite.SiteInfo = siteInfo
+	return nil
 }
 
 // 站点ping功能，检测站点是否可用

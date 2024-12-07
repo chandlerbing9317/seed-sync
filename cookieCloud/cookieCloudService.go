@@ -11,9 +11,22 @@ import (
 )
 
 // 初始化且对外暴露的单例service
-var CookieCloudService = &cookieCloudService{
-	cookieCloudDAO: cookieCloudDAO,
-	lock:           sync.Mutex{},
+var CookieCloudService *cookieCloudService
+
+func init() {
+	CookieCloudService = &cookieCloudService{
+		cookieCloudDAO: cookieCloudDAO,
+		lock:           sync.Mutex{},
+	}
+	//查询库中的cookie cloud配置 如果存在就初始化client，用于后续使用
+	config, err := CookieCloudService.GetCookieCloudConfig()
+	if err != nil {
+		return
+	}
+	CookieCloudService.client, err = NewCookieCloudClient(config)
+	if err != nil {
+		panic(err)
+	}
 }
 
 type cookieCloudService struct {
@@ -22,21 +35,37 @@ type cookieCloudService struct {
 	lock           sync.Mutex
 }
 
-// 添加或更新cookie cloud配置
-func (service *cookieCloudService) CreateOrUpdateCookieCloud(config *CookieCloudConfig) error {
+func (service *cookieCloudService) CreateCookieCloud(config *CookieCloudConfig) error {
 	service.lock.Lock()
 	defer service.lock.Unlock()
 	if service.client != nil {
-		service.cookieCloudDAO.UpdateCookieCloudConfig(config)
-		service.client.Update(config)
-	} else {
-		var err error
-		service.client, err = NewCookieCloudClient(config)
-		if err != nil {
-			return err
-		}
+		return errors.New("cookie cloud已配置")
 	}
-	return nil
+	//初始化客户端
+	client, err := NewCookieCloudClient(config)
+	if err != nil {
+		return err
+	}
+	service.client = client
+	//保存配置到数据库
+	return service.cookieCloudDAO.CreateCookieCloudConfig(config)
+}
+
+// 添加或更新cookie cloud配置
+func (service *cookieCloudService) UpdateCookieCloud(config *CookieCloudConfig) error {
+	service.lock.Lock()
+	defer service.lock.Unlock()
+	if service.client == nil {
+		return errors.New("未配置cookie cloud")
+	}
+	//更新客户端
+	client, err := service.client.Update(config)
+	if err != nil {
+		return err
+	}
+	service.client = client
+	//更新配置到数据库
+	return service.cookieCloudDAO.UpdateCookieCloudConfig(config)
 }
 
 // 删除cookie cloud配置
@@ -45,8 +74,8 @@ func (service *cookieCloudService) DeleteCookieCloud() error {
 	defer service.lock.Unlock()
 
 	if service.client != nil {
-		service.cookieCloudDAO.DeleteCookieCloudConfig()
 		service.client.Destroy()
+		service.cookieCloudDAO.DeleteCookieCloudConfig()
 		service.client = nil
 	}
 	return nil

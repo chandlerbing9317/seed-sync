@@ -30,21 +30,13 @@ func (DownloaderTable) TableName() string {
 	return "seed_sync_downloader"
 }
 
-func (d *DownloaderDAO) AddDownloader(downloader *DownloaderTable) error {
-	return d.db.Create(downloader).Error
-}
-
 // 事务版本的添加
 func (d *DownloaderDAO) AddDownloaderTx(tx *gorm.DB, downloader *DownloaderTable) error {
 	return tx.Create(downloader).Error
 }
 
-func (d *DownloaderDAO) UpdateDownloader(downloader *DownloaderTable) error {
-	return d.db.Save(downloader).Error
-}
-
 // 事务版本的更新
-func (d *DownloaderDAO) UpdateDownloaderTx(tx *gorm.DB, downloader *Downloader) error {
+func (d *DownloaderDAO) UpdateDownloaderTx(tx *gorm.DB, downloader *DownloaderTable) error {
 	return tx.Save(downloader).Error
 }
 
@@ -57,7 +49,7 @@ func (d *DownloaderDAO) DeleteDownloaderTx(tx *gorm.DB, name string) error {
 	return tx.Where("name = ?", name).Delete(&DownloaderTable{}).Error
 }
 
-func (d *DownloaderDAO) GetDownloader(name string) *DownloaderTable {
+func (d *DownloaderDAO) GetDownloaderByName(name string) *DownloaderTable {
 	var downloader DownloaderTable
 	err := d.db.Where("name = ?", name).First(&downloader).Error
 	if err != nil {

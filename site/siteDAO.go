@@ -87,6 +87,14 @@ func (dao *SiteDAO) UpdateSiteBySiteNameTx(tx *gorm.DB, siteName string, site *S
 	return nil
 }
 
+// 删除站点
+func (dao *SiteDAO) DeleteSiteBySiteNameTx(tx *gorm.DB, siteName string) error {
+	if err := tx.Where("site_name = ?", siteName).Delete(&SiteTable{}).Error; err != nil {
+		return err
+	}
+	return tx.Where("site_name = ?", siteName).Delete(&SiteFlowControl{}).Error
+}
+
 // GetMaxOrderTx 在事务中获取最大order
 func (dao *SiteDAO) GetMaxOrderTx(tx *gorm.DB) (int, error) {
 	var maxOrder struct {

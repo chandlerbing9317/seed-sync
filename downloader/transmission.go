@@ -70,6 +70,11 @@ func NewTransmissionClient(config *DownloaderConfig) (*TransmissionClient, error
 	}
 	return client, nil
 }
+func (t *TransmissionClient) Update(config *DownloaderConfig) error {
+	t.config = config
+	return nil
+}
+
 func (t *TransmissionClient) Type() string {
 	return common.DOWNLOADER_TYPE_TRANSMISSION
 }

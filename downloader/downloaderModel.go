@@ -7,3 +7,8 @@ type DownloaderCreateRequest struct {
 	Password string `json:"password"`
 	Type     string `json:"type"`
 }
+
+type DownloaderUpdateRequest struct {
+	DownloaderCreateRequest
+	Id int `json:"id"`
+}

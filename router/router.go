@@ -4,6 +4,7 @@ import (
 	"seed-sync/cookieCloud"
 	"seed-sync/downloader"
 	"seed-sync/router/middleware"
+	"seed-sync/site"
 
 	"github.com/gin-gonic/gin"
 )
@@ -25,11 +26,21 @@ func InitRouter() *gin.Engine {
 
 	//cookie cloud相关api
 	router.GET("/cookie-cloud/get", cookieCloud.GetCookieCloudConfig)
-	router.POST("/cookie-cloud/create-or-update", cookieCloud.CreateOrUpdateCookieCloud)
+	router.POST("/cookie-cloud/create", cookieCloud.CreateCookieCloud)
+	router.POST("/cookie-cloud/update", cookieCloud.UpdateCookieCloud)
 
 	//下载器相关api
 	router.POST("/downloader/create", downloader.CreateDownloader)
+	router.POST("/downloader/update", downloader.UpdateDownloader)
+	router.POST("/downloader/delete", downloader.DeleteDownloader)
 	router.GET("/downloader/list", downloader.GetDownloaderList)
+
+	//站点相关api
+	router.POST("/site/create", site.AddSite)
+	router.POST("/site/update", site.UpdateSite)
+	router.POST("/site/delete/", site.DeleteSite)
+	router.POST("/site/batch-update-orders", site.BatchUpdateSiteOrders)
+	router.GET("/site/list", site.GetSiteList)
 
 	return router
 }

@@ -106,6 +106,14 @@ func ValidateURL(urlStr string) error {
 	return nil
 }
 
+// ValidateCronExpr 校验cron表达式是否合法
+func ValidateCronExpr(cronExpr string) error {
+	if _, err := cron.ParseStandard(cronExpr); err != nil {
+		return fmt.Errorf("cron表达式不正确: %v", err)
+	}
+	return nil
+}
+
 // NormalizeURL 规范化URL
 func NormalizeURL(urlStr string) (string, error) {
 	urlStr = strings.TrimSpace(urlStr)

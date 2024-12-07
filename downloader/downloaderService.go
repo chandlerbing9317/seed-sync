@@ -20,19 +20,19 @@ func init() {
 		downloaders:   make(map[string]Downloader),
 		lock:          sync.Mutex{},
 	}
-	downloaders := DownloaderService.downloaderDAO.GetAllDownloaders()
+	downloaderTables := DownloaderService.downloaderDAO.GetAllDownloaders()
 	//遍历数据库的下载器并初始化保存
-	for _, downloader := range downloaders {
-		d, err := NewDownloader(&DownloaderConfig{
-			Type:     downloader.Type,
-			Url:      downloader.Url,
-			Username: downloader.Username,
-			Password: downloader.Password,
+	for _, downloaderTable := range downloaderTables {
+		downloader, err := NewDownloader(&DownloaderConfig{
+			Type:     downloaderTable.Type,
+			Url:      downloaderTable.Url,
+			Username: downloaderTable.Username,
+			Password: downloaderTable.Password,
 		})
 		if err != nil {
 			panic(err)
 		}
-		DownloaderService.downloaders[downloader.Name] = d
+		DownloaderService.downloaders[downloaderTable.Name] = downloader
 	}
 }
 
@@ -41,9 +41,14 @@ func (service *downloaderService) CreateDownloader(request *DownloaderCreateRequ
 	service.lock.Lock()
 	defer service.lock.Unlock()
 	if _, ok := service.downloaders[request.Name]; ok {
-		return fmt.Errorf("downloader already exists: %s", request.Name)
+		return fmt.Errorf("下载器已存在: %s", request.Name)
 	}
 	tx := service.downloaderDAO.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
 	err := service.downloaderDAO.AddDownloaderTx(tx, &DownloaderTable{
 		Name:     request.Name,
 		Url:      request.Url,
@@ -78,32 +83,55 @@ func (service *downloaderService) DeleteDownloader(name string) error {
 	service.lock.Lock()
 	defer service.lock.Unlock()
 	if _, ok := service.downloaders[name]; !ok {
-		return fmt.Errorf("downloader not found: %s", name)
+		return fmt.Errorf("未找到下载器: %s", name)
 	}
 	service.downloaderDAO.DeleteDownloader(name)
 	delete(service.downloaders, name)
 	return nil
 }
 
+// 更新下载器
+func (service *downloaderService) UpdateDownloader(request *DownloaderUpdateRequest) error {
+	service.lock.Lock()
+	defer service.lock.Unlock()
+	if _, ok := service.downloaders[request.Name]; !ok {
+		return fmt.Errorf("未找到下载器: %s", request.Name)
+	}
+	//开启事务
+	tx := service.downloaderDAO.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+	err := service.downloaderDAO.UpdateDownloaderTx(tx, &DownloaderTable{
+		Id:       request.Id,
+		Name:     request.Name,
+		Url:      request.Url,
+		Username: request.Username,
+		Password: request.Password,
+	})
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	err = service.downloaders[request.Name].Update(&DownloaderConfig{
+		Type:     request.Type,
+		Url:      request.Url,
+		Username: request.Username,
+		Password: request.Password,
+	})
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	return tx.Commit().Error
+}
+
 func (service *downloaderService) GetDownloaderList() []DownloaderTable {
 	service.lock.Lock()
 	defer service.lock.Unlock()
 	return service.downloaderDAO.GetAllDownloaders()
-}
-
-// 更新下载器
-func (service *downloaderService) UpdateDownloader(request *DownloaderCreateRequest) error {
-	service.lock.Lock()
-	defer service.lock.Unlock()
-	if _, ok := service.downloaders[request.Name]; !ok {
-		return fmt.Errorf("downloader not found: %s", request.Name)
-	}
-	//先删除再下载
-	err := service.DeleteDownloader(request.Name)
-	if err != nil {
-		return err
-	}
-	return service.CreateDownloader(request)
 }
 
 // 获取下载器

@@ -24,23 +24,9 @@ type AddSiteRequest struct {
 }
 
 type UpdateSiteRequest struct {
-	SiteName      string   `json:"siteName"`
-	Order         int      `json:"order"`
-	ShowName      string   `json:"showName"`
-	Host          string   `json:"host"`
-	Cookie        string   `json:"cookie"`
-	ApiToken      string   `json:"apiToken"`
-	Passkey       string   `json:"passkey"`
-	RssKey        string   `json:"rssKey"`
-	UserAgent     string   `json:"userAgent"`
-	CustomHeaders []string `json:"customHeaders"`
-	Proxy         bool     `json:"proxy"`
-	// 流控配置
-	MaxPerMin  int  `json:"maxPerMin"`
-	MaxPerHour int  `json:"maxPerHour"`
-	MaxPerDay  int  `json:"maxPerDay"`
-	IsActive   bool `json:"isActive"`
-	Timeout    int  `json:"timeout"`
+	AddSiteRequest
+	ID    int64 `json:"id"`
+	Order int   `json:"order"`
 }
 
 type SiteOrderUpdateRequest struct {

@@ -43,6 +43,11 @@ func NewQbittorrentClient(config *DownloaderConfig) (*QbittorrentClient, error) 
 	return client, nil
 }
 
+func (q *QbittorrentClient) Update(config *DownloaderConfig) error {
+	q.config = config
+	return nil
+}
+
 func (q *QbittorrentClient) Type() string {
 	return common.DOWNLOADER_TYPE_QBITTORRENT
 }

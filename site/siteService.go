@@ -79,7 +79,6 @@ func (service *siteService) AddSite(request *AddSiteRequest) error {
 		UpdateTime: time.Now(),
 	}
 
-	// 在事务中添加站点
 	if err := service.siteDao.AddSiteTx(tx, siteTable, siteFlowControl); err != nil {
 		tx.Rollback()
 		return err
@@ -161,6 +160,23 @@ func (service *siteService) UpdateSite(request *UpdateSiteRequest) error {
 		return err
 	}
 
+	return tx.Commit().Error
+}
+
+// 删除站点
+func (service *siteService) DeleteSite(siteName string) error {
+	tx := service.siteDao.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+	err := service.siteDao.DeleteSiteBySiteNameTx(tx, siteName)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	delete(service.siteClientMap, siteName)
 	return tx.Commit().Error
 }
 

@@ -12,6 +12,7 @@ const (
 
 type Downloader interface {
 	Type() string
+	Update(config *DownloaderConfig) error
 	Ping() error
 	GetSeedsHash() ([]SeedHash, error)
 	AddTorrent(request *AddTorrentRequest) error

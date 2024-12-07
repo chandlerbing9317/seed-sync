@@ -46,6 +46,15 @@ func UpdateCookieCloud(c *gin.Context) {
 	c.JSON(http.StatusOK, common.SuccessResult("cookie cloud更新成功"))
 }
 
+func DeleteCookieCloud(c *gin.Context) {
+	err := CookieCloudService.DeleteCookieCloud()
+	if err != nil {
+		c.JSON(http.StatusOK, common.FailResult("cookie cloud删除失败"+err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, common.SuccessResult("cookie cloud删除成功"))
+}
+
 func GetCookieCloudConfig(c *gin.Context) {
 	config, err := CookieCloudService.GetCookieCloudConfig()
 	if err != nil {

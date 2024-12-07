@@ -28,19 +28,21 @@ func InitRouter() *gin.Engine {
 	router.GET("/cookie-cloud/get", cookieCloud.GetCookieCloudConfig)
 	router.POST("/cookie-cloud/create", cookieCloud.CreateCookieCloud)
 	router.POST("/cookie-cloud/update", cookieCloud.UpdateCookieCloud)
+	router.POST("/cookie-cloud/delete", cookieCloud.DeleteCookieCloud)
 
 	//下载器相关api
 	router.POST("/downloader/create", downloader.CreateDownloader)
 	router.POST("/downloader/update", downloader.UpdateDownloader)
-	router.POST("/downloader/delete", downloader.DeleteDownloader)
+	router.POST("/downloader/delete/:name", downloader.DeleteDownloader)
 	router.GET("/downloader/list", downloader.GetDownloaderList)
 
 	//站点相关api
 	router.POST("/site/create", site.AddSite)
 	router.POST("/site/update", site.UpdateSite)
-	router.POST("/site/delete/", site.DeleteSite)
+	router.POST("/site/delete/:siteName", site.DeleteSite)
 	router.POST("/site/batch-update-orders", site.BatchUpdateSiteOrders)
 	router.GET("/site/list", site.GetSiteList)
+	router.GET("/site/available-sites", site.GetAvailableSites)
 
 	return router
 }

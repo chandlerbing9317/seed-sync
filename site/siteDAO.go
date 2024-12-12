@@ -150,6 +150,9 @@ func (dao *SiteDAO) BatchUpdateSiteOrders(updates []SiteOrderUpdateRequest) erro
 	})
 }
 
-func (dao *SiteDAO) UpdateCookie(siteName string, cookie string) error {
-	return dao.db.Model(&SiteTable{}).Where("site_name = ?", siteName).Update("cookie", cookie).Error
+func (dao *SiteDAO) UpdateCookieAndHost(siteName string, cookie string, host string) error {
+	return dao.db.Model(&SiteTable{}).Where("site_name = ?", siteName).Updates(map[string]interface{}{
+		"cookie": cookie,
+		"host":   host,
+	}).Error
 }

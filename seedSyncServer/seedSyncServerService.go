@@ -9,10 +9,12 @@ type seedSyncServerService struct {
 	syncSeedServerDriver *ServerClient
 }
 
-var SeedSyncServerService = &seedSyncServerService{}
+var SeedSyncServerService = &seedSyncServerService{
+	syncSeedServerDriver: SeedSyncServerClient,
+}
 
 // 定时任务，定时从服务器同步用户是否可用
-func (service *seedSyncServerService) CheckUserForSchedulerTask() error {
+func (service *seedSyncServerService) CheckUser() error {
 	success, err := service.syncSeedServerDriver.CheckUser()
 	if err != nil {
 		return err
@@ -25,8 +27,8 @@ func (service *seedSyncServerService) CheckUserForSchedulerTask() error {
 	return nil
 }
 
-// 定时任务，定时从服务器同步支持的站点
-func (service *seedSyncServerService) GetSiteForSchedulerTask() error {
+// 从服务器同步支持的站点
+func (service *seedSyncServerService) GetSupportedSite() error {
 	supportedSites, err := service.syncSeedServerDriver.GetSupportedSites(0, math.MaxInt)
 	if err != nil {
 		return err

@@ -35,15 +35,15 @@ func initExecuteFuncMap() {
 	executeFuncMap = map[string]*SchedulerTask{
 		common.CHECK_USER_EXECUTE_CONTENT: {
 			ExecuteContent: common.CHECK_USER_EXECUTE_CONTENT,
-			ExecuteFunc:    seedSyncServer.SeedSyncServerService.CheckUserForSchedulerTask,
+			ExecuteFunc:    seedSyncServer.SeedSyncServerService.CheckUser,
 		},
 		common.GET_SITE_EXECUTE_CONTENT: {
 			ExecuteContent: common.GET_SITE_EXECUTE_CONTENT,
-			ExecuteFunc:    seedSyncServer.SeedSyncServerService.GetSiteForSchedulerTask,
+			ExecuteFunc:    seedSyncServer.SeedSyncServerService.GetSupportedSite,
 		},
 		common.SYNC_COOKIE_CLOUD_EXECUTE_CONTENT: {
 			ExecuteContent: common.SYNC_COOKIE_CLOUD_EXECUTE_CONTENT,
-			ExecuteFunc:    cookieCloud.CookieCloudService.SyncCookieForSchedulerTask,
+			ExecuteFunc:    cookieCloud.CookieCloudService.SyncCookie,
 		},
 	}
 }
@@ -90,7 +90,7 @@ func (service *schedulerService) GetAllSchedulerTask() ([]*SchedulerTaskTable, e
 }
 
 // 执行定时任务
-func (service *schedulerService) ScheduleTask() error {
+func (service *schedulerService) ExecuteSchedulerTask() error {
 	service.lock.Lock()
 	defer service.lock.Unlock()
 	tasks, err := service.schedulerTaskDAO.GetActiveSchedulerTask()
@@ -106,7 +106,7 @@ func (service *schedulerService) ScheduleTask() error {
 				task.ExecuteStatus = SchedulerTaskStatusExecuting
 				task.LastExecuteTime = time.Now()
 				service.schedulerTaskDAO.UpdateSchedulerTask(task)
-				service.executeTask(task, schedulerTask)
+				service.doExecute(task, schedulerTask)
 			} else {
 				log.Error("未找到执行函数", zap.String("executeContent", task.ExecuteContent))
 			}
@@ -116,7 +116,7 @@ func (service *schedulerService) ScheduleTask() error {
 }
 
 // 执行任务，放在go routine中执行
-func (service *schedulerService) executeTask(task *SchedulerTaskTable, schedulerTask *SchedulerTask) {
+func (service *schedulerService) doExecute(task *SchedulerTaskTable, schedulerTask *SchedulerTask) {
 	go func(task *SchedulerTaskTable, schedulerTask *SchedulerTask) {
 		defer func() {
 			if r := recover(); r != nil {

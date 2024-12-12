@@ -3,6 +3,7 @@ package main
 import (
 	"seed-sync/log"
 	"seed-sync/router"
+	_ "seed-sync/site/impl/nexus"
 
 	"go.uber.org/zap"
 )

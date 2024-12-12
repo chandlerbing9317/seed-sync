@@ -3,8 +3,6 @@ package cookieCloud
 import (
 	"encoding/json"
 	"seed-sync/db"
-
-	"gorm.io/gorm"
 )
 
 const (
@@ -12,14 +10,9 @@ const (
 )
 
 type CookieCloudDAO struct {
-	db *gorm.DB
 }
 
-var cookieCloudDAO = &CookieCloudDAO{
-	db: db.DB,
-}
-
-
+var cookieCloudDAO = &CookieCloudDAO{}
 
 func (dao *CookieCloudDAO) CreateCookieCloudConfig(config *CookieCloudConfig) error {
 	configBytes, err := json.Marshal(config)
@@ -39,4 +32,17 @@ func (dao *CookieCloudDAO) UpdateCookieCloudConfig(config *CookieCloudConfig) er
 
 func (dao *CookieCloudDAO) DeleteCookieCloudConfig() error {
 	return db.SystemParamDao.DeleteSystemParam(CookieCloudConfigKey)
+}
+
+func (dao *CookieCloudDAO) GetCookieCloudConfig() (*CookieCloudConfig, error) {
+	configBytes, err := db.SystemParamDao.GetSystemParam(CookieCloudConfigKey)
+	if err != nil {
+		return nil, err
+	}
+	config := &CookieCloudConfig{}
+	err = json.Unmarshal([]byte(configBytes), config)
+	if err != nil {
+		return nil, err
+	}
+	return config, nil
 }

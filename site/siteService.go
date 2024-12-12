@@ -15,14 +15,42 @@ type siteService struct {
 }
 
 var SiteService = &siteService{
-	siteDao: siteDAO,
-	lock:    sync.Mutex{},
+	siteDao:       siteDAO,
+	siteClientMap: make(map[string]SiteClient),
+	lock:          sync.Mutex{},
 }
 
+// 添加站点
 // 添加站点
 func (service *siteService) AddSite(request *AddSiteRequest) error {
 	service.lock.Lock()
 	defer service.lock.Unlock()
+	return service.addSite(request)
+}
+
+// 更新站点
+func (service *siteService) UpdateSite(request *UpdateSiteRequest) error {
+	service.lock.Lock()
+	defer service.lock.Unlock()
+	return service.updateSite(request)
+}
+
+func (service *siteService) addSite(request *AddSiteRequest) error {
+	if request.Timeout == 0 {
+		request.Timeout = DEFAULT_TIMEOUT
+	}
+	if request.MaxPerMin == 0 {
+		request.MaxPerMin = DEFAULT_MAX_PER_MIN
+	}
+	if request.MaxPerHour == 0 {
+		request.MaxPerHour = DEFAULT_MAX_PER_HOUR
+	}
+	if request.MaxPerDay == 0 {
+		request.MaxPerDay = DEFAULT_MAX_PER_DAY
+	}
+	if request.UserAgent == "" {
+		request.UserAgent = DEFAULT_USER_AGENT
+	}
 
 	// 开启事务
 	tx := service.siteDao.db.Begin()
@@ -97,10 +125,7 @@ func (service *siteService) AddSite(request *AddSiteRequest) error {
 }
 
 // 更新站点
-func (service *siteService) UpdateSite(request *UpdateSiteRequest) error {
-	service.lock.Lock()
-	defer service.lock.Unlock()
-
+func (service *siteService) updateSite(request *UpdateSiteRequest) error {
 	// 开启事务
 	tx := service.siteDao.db.Begin()
 	defer func() {
@@ -191,11 +216,49 @@ func (service *siteService) GetSiteList() ([]*SiteInfo, error) {
 }
 
 // 更新站点cookie
-func (service *siteService) UpdateCookie(siteName string, cookie string) error {
-	return service.siteDao.UpdateCookie(siteName, cookie)
+func (service *siteService) UpdateCookie(siteName string, cookie string, host string) error {
+	service.lock.Lock()
+	defer service.lock.Unlock()
+
+	//如果站点不存在就创建站点
+	siteInfo := service.siteDao.GetSiteInfo(siteName)
+	if siteInfo == nil {
+		request := &AddSiteRequest{
+			SiteName: siteName,
+			Cookie:   cookie,
+			Host:     host,
+		}
+		if err := paramCheck(request); err != nil {
+			return err
+		}
+		return service.addSite(request)
+	} else {
+		//否则就更新
+		siteInfo.Cookie = cookie
+		siteInfo.Host = host
+		request := &UpdateSiteRequest{
+			AddSiteRequest: &AddSiteRequest{
+				SiteName: siteName,
+				Cookie:   cookie,
+				Host:     host,
+			},
+			ID:    siteInfo.ID,
+			Order: siteInfo.Order,
+		}
+		if err := paramCheck(request.AddSiteRequest); err != nil {
+			return err
+		}
+		return service.updateSite(request)
+	}
+
 }
 
 func (service *siteService) Ping(siteName string) error {
 	siteClient := service.siteClientMap[siteName]
 	return siteClient.Ping()
+}
+
+//获取某个站点的客户端
+func (service *siteService) GetSiteClient(siteName string) SiteClient {
+	return service.siteClientMap[siteName]
 }

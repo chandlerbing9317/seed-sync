@@ -1,6 +1,8 @@
 package site
 
 import (
+	"seed-sync/common"
+	"strings"
 	"time"
 )
 
@@ -24,7 +26,7 @@ type AddSiteRequest struct {
 }
 
 type UpdateSiteRequest struct {
-	AddSiteRequest
+	*AddSiteRequest
 	ID    int64 `json:"id"`
 	Order int   `json:"order"`
 }
@@ -36,20 +38,20 @@ type SiteOrderUpdateRequest struct {
 
 type SiteInfo struct {
 	// SiteTable 字段
-	ID           int64  `json:"id"`
-	SiteName     string `json:"siteName"`
-	ShowName     string `json:"showName"`
-	Order        int    `json:"order"`
-	Host         string `json:"host"`
-	Cookie       string `json:"cookie"`
-	ApiToken     string `json:"apiToken"`
-	Passkey      string `json:"passkey"`
-	RssKey       string `json:"rssKey"`
-	UserAgent    string `json:"userAgent"`
-	CustomHeader string `json:"customHeader"`
-	Proxy        bool   `json:"proxy"`
-	Timeout      int    `json:"timeout"`
-	IsActive     bool   `json:"isActive"`
+	ID           int64    `json:"id"`
+	SiteName     string   `json:"siteName"`
+	ShowName     string   `json:"showName"`
+	Order        int      `json:"order"`
+	Host         string   `json:"host"`
+	Cookie       string   `json:"cookie"`
+	ApiToken     string   `json:"apiToken"`
+	Passkey      string   `json:"passkey"`
+	RssKey       string   `json:"rssKey"`
+	UserAgent    string   `json:"userAgent"`
+	CustomHeader []string `json:"customHeader"`
+	Proxy        bool     `json:"proxy"`
+	Timeout      int      `json:"timeout"`
+	IsActive     bool     `json:"isActive"`
 
 	// SiteFlowControl 字段
 	MaxPerMin  int `json:"maxPerMin"`
@@ -72,7 +74,7 @@ func GenerateSiteInfo(siteTable *SiteTable, siteFlowControl *SiteFlowControl) *S
 		Passkey:      siteTable.Passkey,
 		RssKey:       siteTable.RssKey,
 		UserAgent:    siteTable.UserAgent,
-		CustomHeader: siteTable.CustomHeader,
+		CustomHeader: strings.Split(siteTable.CustomHeader, common.CustomHeaderSeparator),
 		Proxy:        siteTable.Proxy,
 		Timeout:      siteTable.Timeout,
 		IsActive:     siteTable.IsActive,

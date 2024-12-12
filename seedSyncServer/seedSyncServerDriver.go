@@ -13,23 +13,15 @@ type ServerClient struct {
 	ServerConfig *config.ServerConfig
 }
 
-var SeedSyncServerClient *ServerClient
+var SeedSyncServerClient *ServerClient = &ServerClient{
+	ServerConfig: &config.Conf.ServerConfig,
+}
 
 const (
 	GET_SUPPORTED_SITES_URL = "/sites/supported"
 	SEED_SYNC_URL           = "/seed/sync"
 	CHECK_USER_URL          = "/user/check"
 )
-
-func init() {
-	SeedSyncServerClient, _ = newServerClient()
-}
-
-func newServerClient() (*ServerClient, error) {
-	return &ServerClient{
-		ServerConfig: &config.Conf.ServerConfig,
-	}, nil
-}
 
 // 获取支持的站点
 func (s *ServerClient) GetSupportedSites(page int, pageSize int) (*common.PageResponse[SupportSiteResponse], error) {

@@ -1,24 +1,20 @@
 package nexus
 
-import (
-	"seed-sync/site"
+import "seed-sync/site"
+
+const (
+	HhanSiteName = "hhan"
 )
 
 type HhanSite struct {
 	*NexusSite
 }
 
-const (
-	HhanSiteName = "hhan"
-)
-
-// hhan
 func (hhanSite *HhanSite) SiteName() string {
 	return HhanSiteName
 }
 
 func NewHhanSite(siteInfo *site.SiteInfo) (site.SiteClient, error) {
-	//先实例化父类
 	nexusSite, err := NewNexusSite(siteInfo)
 	if err != nil {
 		return nil, err

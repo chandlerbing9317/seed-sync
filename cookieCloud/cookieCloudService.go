@@ -3,7 +3,9 @@ package cookieCloud
 import (
 	"errors"
 	"fmt"
+	"seed-sync/common"
 	"seed-sync/log"
+	"seed-sync/seedSyncServer"
 	"seed-sync/site"
 	"sync"
 
@@ -19,7 +21,7 @@ func init() {
 		lock:           sync.Mutex{},
 	}
 	//查询库中的cookie cloud配置 如果存在就初始化client，用于后续使用
-	config, err := CookieCloudService.GetCookieCloudConfig()
+	config, err := CookieCloudService.cookieCloudDAO.GetCookieCloudConfig()
 	if err != nil {
 		return
 	}
@@ -91,8 +93,9 @@ func (service *cookieCloudService) GetCookieCloudConfig() (*CookieCloudConfig, e
 	return service.client.GetConfig(), nil
 }
 
-// sync cookieCloud for scheduler task
-func (service *cookieCloudService) SyncCookieForSchedulerTask() error {
+// 同步cookieCloud的cookie到站点
+// 如果站点不存在，就自动创建站点
+func (service *cookieCloudService) SyncCookie() error {
 	if service.client == nil {
 		return errors.New("未配置cookie cloud")
 	}
@@ -100,18 +103,25 @@ func (service *cookieCloudService) SyncCookieForSchedulerTask() error {
 	if err != nil {
 		return err
 	}
-	siteList, err := site.SiteService.GetSiteList()
+	err = seedSyncServer.SeedSyncServerService.GetSupportedSite()
 	if err != nil {
 		return err
 	}
+	supportedSiteMap, exists := common.CacheGetObject[map[string]seedSyncServer.SupportSiteResponse](common.SUPPORT_SITE_CACHE_KEY)
+	if !exists {
+		return errors.New("获取支持的站点失败")
+	}
+
 	var errs []error
-	for _, siteInfo := range siteList {
-		cookieStr, ok := cookie.GetCookieByDomain(siteInfo.Host)
-		if ok {
-			err = site.SiteService.UpdateCookie(siteInfo.SiteName, cookieStr)
-			if err != nil {
-				log.Error("更新站点cookie失败", zap.String("siteName", siteInfo.SiteName), zap.Error(err))
-				errs = append(errs, err)
+	for _, siteInfo := range supportedSiteMap {
+		for _, host := range siteInfo.Hosts {
+			cookieStr, ok := cookie.GetCookieByDomain(host)
+			if ok {
+				err = site.SiteService.UpdateCookie(siteInfo.SiteName, cookieStr, host)
+				if err != nil {
+					log.Error("更新站点cookie失败", zap.String("siteName", siteInfo.SiteName), zap.Error(err))
+					errs = append(errs, err)
+				}
 			}
 		}
 	}

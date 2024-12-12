@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"seed-sync/common"
 	"seed-sync/config"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -15,7 +14,7 @@ import (
 type SiteClient interface {
 	SiteName() string
 	Update(siteInfo *SiteInfo) error
-	DownloadSeed(torrentId int) ([]byte, error)
+	DownloadTorrent(torrentId int) ([]byte, error)
 	Ping() error
 }
 
@@ -33,7 +32,7 @@ func NewBaseSite(siteInfo *SiteInfo) *BaseSite {
 }
 
 // 根据种子id下载种子文件
-func (baseSite *BaseSite) DownloadSeed(torrentId int) ([]byte, error) {
+func (baseSite *BaseSite) DownloadTorrent(torrentId int) ([]byte, error) {
 	requestUrl := baseSite.GetDownloadUrl(torrentId)
 	requestClient, err := baseSite.GetRequestClient()
 	if err != nil {
@@ -79,16 +78,12 @@ func (baseSite *BaseSite) Ping() error {
 // 默认的http header
 func (baseSite *BaseSite) GetHttpHeader() map[string]string {
 	header := make(map[string]string)
-	header["Cookie"] = baseSite.SiteInfo.Cookie
 	header["User-Agent"] = baseSite.SiteInfo.UserAgent
-	if baseSite.SiteInfo.ApiToken != "" {
-		header["X-API-Token"] = baseSite.SiteInfo.ApiToken
-	}
 	//处理自定义header，自定义header的格式为：key1=value1${common.CustomHeaderSeparator}key2=value2
 	//自定义header的优先级高于上述明确设置的header
-	if baseSite.SiteInfo.CustomHeader != "" {
-		for _, customHeader := range strings.Split(baseSite.SiteInfo.CustomHeader, common.CustomHeaderSeparator) {
-			headerPair := strings.Split(customHeader, ":")
+	if len(baseSite.SiteInfo.CustomHeader) > 0 {
+		for _, customHeader := range baseSite.SiteInfo.CustomHeader {
+			headerPair := strings.Split(customHeader, "=")
 			if len(headerPair) == 2 {
 				header[strings.TrimSpace(headerPair[0])] = strings.TrimSpace(headerPair[1])
 			}
@@ -97,7 +92,6 @@ func (baseSite *BaseSite) GetHttpHeader() map[string]string {
 	return header
 }
 
-// 默认http_client
 func (baseSite *BaseSite) GetRequestClient() (*http.Client, error) {
 	var baseClient *http.Client
 	if baseSite.SiteInfo.Proxy {
@@ -126,11 +120,7 @@ func (baseSite *BaseSite) SiteName() string {
 
 // 父类接口
 func (baseSite *BaseSite) GetDownloadUrl(torrentId int) string {
-	params := map[string]string{
-		"torrentId": strconv.Itoa(torrentId),
-		"passkey":   baseSite.SiteInfo.Passkey,
-	}
-	return common.FormatUrlTemplate(baseSite.Config.DownloadTorrentUrl, params)
+	return ""
 }
 
 // 父类接口

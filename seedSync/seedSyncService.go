@@ -2,6 +2,7 @@ package seedSync
 
 import (
 	"errors"
+	"fmt"
 	"seed-sync/common"
 	"seed-sync/downloader"
 	"seed-sync/log"
@@ -10,8 +11,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"go.uber.org/zap"
 )
 
 const SEED_SYNC_BATCH_SIZE = 200
@@ -75,10 +74,10 @@ func (service *seedSyncService) UpdateSeedSyncTask(request *UpdateSeedSyncTaskRe
 func (service *seedSyncService) SeedSync(taskName string) error {
 	task := service.seedSyncDAO.GetSeedSyncTaskByTaskName(taskName)
 	if task == nil {
-		return errors.New("任务" + taskName + "不存在")
+		return errors.New("辅种任务" + taskName + "不存在")
 	}
 	if task.Status != common.SEED_SYNC_TASK_STATUS_USED {
-		return errors.New("任务" + taskName + "状态未启用")
+		return errors.New("辅种任务" + taskName + "状态未启用")
 	}
 	return service.doSeedSync(task)
 }
@@ -90,13 +89,13 @@ func (service *seedSyncService) doSeedSync(task *SeedSyncTaskTable) error {
 	//3. 根据辅种配置，拿到要辅种的种子和站点，向服务端发请求进行辅种，得到可以辅种的种子
 	//4. 判断可以辅种的种子不存在，去相应站点下载种子
 	//5. 下载种子后，调用下载器的下载接口进行辅种
-	d, err := downloader.DownloaderService.GetDownloaderById(task.DownloaderId)
+	downloaderClient, err := downloader.DownloaderService.GetDownloaderById(task.DownloaderId)
 	if err != nil {
-		return err
+		return fmt.Errorf("辅种失败：获取下载器失败， 错误: %v", err)
 	}
-	seeds, err := d.GetSeedsHash()
+	seeds, err := downloaderClient.GetSeedsHash()
 	if err != nil {
-		return err
+		return fmt.Errorf("辅种失败：从下载器获取种子失败， 错误: %v", err)
 	}
 	//转map，key为hash
 	seedMap := make(map[string]downloader.SeedHash)
@@ -116,61 +115,67 @@ func (service *seedSyncService) doSeedSync(task *SeedSyncTaskTable) error {
 	//分批请求和辅种
 	for _, batch := range batchSeeds {
 		request := service.getSeedSyncRequest(batch, task)
+		//无可辅种的种子，跳过
 		if request == nil {
 			continue
 		}
 		response, err := seedSyncServer.SeedSyncServerClient.SyncSeed(request)
 		if err != nil {
-			return err
+			return fmt.Errorf("辅种失败：向seedSyncServer请求辅种种子失败， 错误: %v", err)
 		}
-		err = service.handleSeedSyncResponse(response, seedMap)
+		err = service.handleSeedSyncResponse(response, seedMap, downloaderClient)
 		if err != nil {
-			log.Error("辅种失败", zap.Error(err))
+			return fmt.Errorf("辅种失败，错误: %v", err)
 		}
 	}
 	return nil
 }
 
-func (service *seedSyncService) getSeedSyncRequest(seeds []downloader.SeedHash, task *SeedSyncTaskTable) *seedSyncServer.SeedSyncRequest {
-	//向服务端请求可辅种的种子
-	infoHashList := make([]string, 0)
-	for _, seed := range seeds {
-		//过滤掉不辅种的种子
-		if seed.Size < task.MinSize {
-			continue
-		}
-		if strings.Contains(seed.DownloadDir, task.ExcludePath) {
-			continue
-		}
-		if common.HasSameElement(strings.Split(task.ExcludeTag, ";"), seed.Tags) {
-			continue
-		}
-		infoHashList = append(infoHashList, seed.InfoHash)
-	}
-	if len(infoHashList) == 0 {
-		return nil
-	}
-	return &seedSyncServer.SeedSyncRequest{
-		InfoHash: infoHashList,
-		Sites:    strings.Split(task.SiteList, ";"),
-	}
-}
-
-func (service *seedSyncService) handleSeedSyncResponse(response map[string][]seedSyncServer.SeedSyncTorrentInfoResponse, seedMap map[string]downloader.SeedHash) error {
+func (service *seedSyncService) handleSeedSyncResponse(response map[string][]seedSyncServer.SeedSyncTorrentInfoResponse, seedMap map[string]downloader.SeedHash, downloaderClient downloader.Downloader) error {
 	//处理返回结果，对于seedMap中不存在的种子，进行下载
-	log.Info("处理返回结果", zap.Any("response", response))
-	for _, seedForSyncList := range response {
+	for srcHash, seedForSyncList := range response {
 		for _, seedForSync := range seedForSyncList {
 			if _, ok := seedMap[seedForSync.InfoHash]; !ok {
-				//种子不存在，进行下载
-				//todo 下载种子 todo 流控，todo： 实时日志
-				//下载成功后将种子添加到seedMap
-				log.Info("下载种子", zap.String("infoHash", seedForSync.InfoHash))
+				err := service.downloadAndSyncSeed(seedMap[srcHash], seedForSync, downloaderClient)
+				if err != nil {
+					log.Error(err.Error())
+					continue
+				}
+				//将种子添加到seedMap
 				seedMap[seedForSync.InfoHash] = downloader.SeedHash{
-					InfoHash: seedForSync.InfoHash,
+					InfoHash:    seedForSync.InfoHash,
+					Size:        0,
+					Tags:        []string{},
+					DownloadDir: "",
 				}
 			}
 		}
+	}
+	return nil
+}
+
+func (service *seedSyncService) downloadAndSyncSeed(srcSeed downloader.SeedHash, seedForSync seedSyncServer.SeedSyncTorrentInfoResponse, downloaderClient downloader.Downloader) error {
+	//获取站点客户端
+	siteClient := site.SiteService.GetSiteClient(seedForSync.SiteName)
+	if siteClient == nil {
+		return fmt.Errorf("辅种失败：站点客户端不存在，站点名称: %s", seedForSync.SiteName)
+	}
+	//下载种子
+	bytes, err := siteClient.DownloadTorrent(seedForSync.TorrentId)
+	if err != nil {
+		return fmt.Errorf("辅种失败：下载种子失败，站点名称: %s,种子id: %d, 错误: %v", seedForSync.SiteName, seedForSync.TorrentId, err)
+	}
+	//辅种
+	//创建request
+	//todo: tag
+	request := &downloader.AddTorrentRequest{
+		DownloadDir: srcSeed.DownloadDir,
+		TorrentFile: bytes,
+		Paused:      true,
+	}
+	err = downloaderClient.AddTorrent(request)
+	if err != nil {
+		return fmt.Errorf("辅种失败：下载器添加种子失败， 错误: %v", err)
 	}
 	return nil
 }
@@ -244,4 +249,28 @@ func (service *seedSyncService) checkParam(request *UpdateSeedSyncTaskRequest, c
 		return errors.New("任务状态不合法")
 	}
 	return nil
+}
+func (service *seedSyncService) getSeedSyncRequest(seeds []downloader.SeedHash, task *SeedSyncTaskTable) *seedSyncServer.SeedSyncRequest {
+	//向服务端请求可辅种的种子
+	infoHashList := make([]string, 0)
+	for _, seed := range seeds {
+		//过滤掉不辅种的种子
+		if seed.Size < task.MinSize {
+			continue
+		}
+		if strings.Contains(seed.DownloadDir, task.ExcludePath) {
+			continue
+		}
+		if common.HasSameElement(strings.Split(task.ExcludeTag, ";"), seed.Tags) {
+			continue
+		}
+		infoHashList = append(infoHashList, seed.InfoHash)
+	}
+	if len(infoHashList) == 0 {
+		return nil
+	}
+	return &seedSyncServer.SeedSyncRequest{
+		InfoHash: infoHashList,
+		Sites:    strings.Split(task.SiteList, ";"),
+	}
 }

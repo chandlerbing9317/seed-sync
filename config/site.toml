@@ -9,6 +9,7 @@ userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML
 driverType = "nexus"
 downloadTorrentUrl = "/download.php?id={torrentId}"
 seedDetailUrl = "/details.php?id={torrentId}&hit=1"
+pingUrl = "/index.php"
 
 # Unit3d驱动配置
 [driverConfigs.unit3d]
@@ -18,15 +19,99 @@ seedDetailUrl = "/api/torrents/{torrentId}?api_token={apiToken}"
 
 # 具体站点配置
 [siteConfigs]
-# hhanclub站点配置
-[siteConfigs.hhanclub]
-driverType = "nexus"
-siteName = "hhanclub"
 
 # hdhome站点配置
 [siteConfigs.hdhome]
 driverType = "nexus"
 siteName = "hdhome"
+
+
+# ourbits站点配置
+[siteConfigs.ourbits]
+driverType = "nexus"
+siteName = "ourbits"
+
+# hhanclub站点配置
+[siteConfigs.hhanclub]
+driverType = "nexus"
+siteName = "hhan"
+
+# audiences站点配置
+[siteConfigs.audiences]
+driverType = "nexus"
+siteName = "audiences"
+
+# cyanbug站点配置
+[siteConfigs.cyanbug]
+driverType = "nexus"
+siteName = "cyanbug"
+
+# icc2022站点配置
+[siteConfigs.icc2022]
+driverType = "nexus"
+siteName = "icc2022"
+
+# ptvicomo站点配置
+[siteConfigs.ptvicomo]
+driverType = "nexus"
+siteName = "ptvicomo"
+
+# soulvoice站点配置
+[siteConfigs.soulvoice]
+driverType = "nexus"
+siteName = "soulvoice"
+
+
+# btschool站点配置
+[siteConfigs.btschool]
+driverType = "nexus"
+siteName = "btschool"
+
+
+# qingwapt站点配置
+[siteConfigs.qingwapt]
+driverType = "nexus"
+siteName = "qingwapt"
+
+
+# haidan站点配置
+[siteConfigs.haidan]
+driverType = "nexus"
+siteName = "haidan"
+
+
+# hdfans站点配置
+[siteConfigs.hdfans]
+driverType = "nexus"
+siteName = "hdfans"
+
+# carpt站点配置
+[siteConfigs.carpt]
+driverType = "nexus"
+siteName = "carpt"
+
+# hdkyl站点配置
+[siteConfigs.hdkyl]
+driverType = "nexus"
+siteName = "hdkyl"
+
+
+# ubits站点配置
+[siteConfigs.ubits]
+driverType = "nexus"
+siteName = "ubits"
+
+
+# 1ptba站点配置
+[siteConfigs.1ptba]
+driverType = "nexus"
+siteName = "1ptba"
+
+# crabpt站点配置
+[siteConfigs.crabpt]
+driverType = "nexus"
+siteName = "crabpt"
+
 
 # monika站点配置
 [siteConfigs.monikadesign]

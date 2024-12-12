@@ -5,8 +5,19 @@ import (
 	"net/http"
 	"seed-sync/common"
 	"seed-sync/seedSyncServer"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+)
+
+const (
+	DEFAULT_TIMEOUT      = 60
+	DEFAULT_MAX_PER_MIN  = 10
+	DEFAULT_MAX_PER_HOUR = 50
+	DEFAULT_MAX_PER_DAY  = 200
+	DEFAULT_IS_ACTIVE    = true
+	DEFAULT_PROXY        = false
+	DEFAULT_USER_AGENT   = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 )
 
 func AddSite(ctx *gin.Context) {
@@ -35,7 +46,7 @@ func UpdateSite(ctx *gin.Context) {
 		return
 	}
 	//参数校验
-	if err := paramCheck(&request.AddSiteRequest); err != nil {
+	if err := paramCheck(request.AddSiteRequest); err != nil {
 		ctx.JSON(http.StatusOK, common.FailResult("更新站点失败:"+err.Error()))
 		return
 	}
@@ -98,6 +109,11 @@ func paramCheck(request *AddSiteRequest) error {
 	if request.SiteName == "" {
 		return fmt.Errorf("站点名不能为空")
 	}
+	//这里的host改为删除开头的http://或https:// 强制改为https
+	request.Host = strings.TrimPrefix(request.Host, common.Http)
+	request.Host = strings.TrimPrefix(request.Host, common.Https)
+
+	request.Host = common.Https + request.Host
 	if err := common.ValidateURL(request.Host); err != nil {
 		return fmt.Errorf("host格式不正确: %s", err.Error())
 	}
@@ -107,9 +123,28 @@ func paramCheck(request *AddSiteRequest) error {
 	}
 	request.Host = host
 
-	if request.MaxPerMin <= 0 || request.MaxPerHour <= 0 || request.MaxPerDay <= 0 {
+	if request.Timeout < 0 {
+		return fmt.Errorf("超时时间不能小于0")
+	}
+	if request.MaxPerMin < 0 || request.MaxPerHour < 0 || request.MaxPerDay < 0 {
 		return fmt.Errorf("每分钟、每小时、每天的最大请求数必须大于0")
 	}
+	if request.Timeout == 0 {
+		request.Timeout = DEFAULT_TIMEOUT
+	}
+	if request.MaxPerMin == 0 {
+		request.MaxPerMin = DEFAULT_MAX_PER_MIN
+	}
+	if request.MaxPerHour == 0 {
+		request.MaxPerHour = DEFAULT_MAX_PER_HOUR
+	}
+	if request.MaxPerDay == 0 {
+		request.MaxPerDay = DEFAULT_MAX_PER_DAY
+	}
+	if request.UserAgent == "" {
+		request.UserAgent = DEFAULT_USER_AGENT
+	}
+
 	supportedSiteMap, exists := common.CacheGetObject[map[string]seedSyncServer.SupportSiteResponse](common.SUPPORT_SITE_CACHE_KEY)
 	if !exists {
 		return fmt.Errorf("获取支持的站点失败")

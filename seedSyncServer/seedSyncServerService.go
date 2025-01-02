@@ -3,6 +3,7 @@ package seedSyncServer
 import (
 	"math"
 	"seed-sync/common"
+	"seed-sync/scheduler"
 )
 
 type seedSyncServerService struct {
@@ -26,8 +27,6 @@ func (service *seedSyncServerService) CheckUser() error {
 	}
 	return nil
 }
-
-// 从服务器同步支持的站点
 func (service *seedSyncServerService) GetSupportedSite() error {
 	supportedSites, err := service.syncSeedServerDriver.GetSupportedSites(0, math.MaxInt)
 	if err != nil {
@@ -40,4 +39,12 @@ func (service *seedSyncServerService) GetSupportedSite() error {
 	// 缓存支持的站点，用于添加站点时校验
 	common.CacheSetObject(common.SUPPORT_SITE_CACHE_KEY, supportedSiteMap)
 	return nil
+}
+
+// 从服务器同步支持的站点
+func (service *seedSyncServerService) GetSupportedSiteScheduler(schedulerTask *scheduler.SchedulerTaskTable) error {
+	return service.GetSupportedSite()
+}
+func (service *seedSyncServerService) CheckUserScheduler(schedulerTask *scheduler.SchedulerTaskTable) error {
+	return service.CheckUser()
 }

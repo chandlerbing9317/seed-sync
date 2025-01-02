@@ -1,6 +1,7 @@
 package main
 
 import (
+	initPkg "seed-sync/init"
 	"seed-sync/log"
 	"seed-sync/router"
 	_ "seed-sync/site/impl/nexus"
@@ -14,16 +15,15 @@ import (
 // @BasePath        /
 // @schemes         http
 func main() {
-	// 初始化日志
-	log.InitLogger()
-	defer log.Sugar.Sync()
+	// 初始化
+	initPkg.Init()
 
 	// 初始化路由
 	r := router.InitRouter()
 
 	// 启动服务器
-	log.Info("Server starting on :8705")
+	log.Info("服务启动===>   启动服务器")
 	if err := r.Run(":8705"); err != nil {
-		log.Fatal("Server failed to start", zap.Error(err))
+		log.Fatal("服务启动===>   启动服务器失败", zap.Error(err))
 	}
 }

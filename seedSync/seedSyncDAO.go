@@ -8,15 +8,15 @@ import (
 )
 
 type SeedSyncDAO struct {
-	db *gorm.DB
+	DB *gorm.DB
 }
 
 var seedSyncDAO = &SeedSyncDAO{
-	db: db.DB,
+	DB: db.DB,
 }
 
 type SeedSyncTaskTable struct {
-	Id           int64     `gorm:"column:id;"`
+	ID           int64     `gorm:"column:id;"`
 	TaskName     string    `gorm:"column:task_name"`
 	SiteList     string    `gorm:"column:site_list"`
 	DownloaderId int64     `gorm:"column:downloader_id"`
@@ -24,7 +24,6 @@ type SeedSyncTaskTable struct {
 	ExcludeTag   string    `gorm:"column:exclude_tag"`
 	MinSize      int64     `gorm:"column:min_size"`
 	AddTag       string    `gorm:"column:add_tag"`
-	Status       string    `gorm:"column:status"`
 	CreateTime   time.Time `gorm:"column:create_time"`
 	UpdateTime   time.Time `gorm:"column:update_time"`
 }
@@ -34,16 +33,24 @@ func (SeedSyncTaskTable) TableName() string {
 }
 
 func (s *SeedSyncDAO) CreateSeedSyncTask(task *SeedSyncTaskTable) error {
-	return s.db.Create(task).Error
+	return s.DB.Create(task).Error
+}
+
+func (s *SeedSyncDAO) CreateSeedSyncTaskWithTx(tx *gorm.DB, task *SeedSyncTaskTable) error {
+	return tx.Create(task).Error
 }
 
 func (s *SeedSyncDAO) UpdateSeedSyncTask(task *SeedSyncTaskTable) error {
-	return s.db.Model(task).Where("id = ?", task.Id).Updates(task).Error
+	return s.DB.Model(task).Where("id = ?", task.ID).Updates(task).Error
+}
+
+func (s *SeedSyncDAO) UpdateSeedSyncTaskWithTx(tx *gorm.DB, task *SeedSyncTaskTable) error {
+	return tx.Model(task).Where("id = ?", task.ID).Updates(task).Error
 }
 
 func (s *SeedSyncDAO) GetSeedSyncTask(id int64) *SeedSyncTaskTable {
 	var task SeedSyncTaskTable
-	err := s.db.Where("id = ?", id).First(&task).Error
+	err := s.DB.Where("id = ?", id).First(&task).Error
 	if err != nil {
 		return nil
 	}
@@ -52,7 +59,7 @@ func (s *SeedSyncDAO) GetSeedSyncTask(id int64) *SeedSyncTaskTable {
 
 func (s *SeedSyncDAO) GetSeedSyncTaskByTaskName(taskName string) *SeedSyncTaskTable {
 	var task SeedSyncTaskTable
-	err := s.db.Where("task_name = ?", taskName).First(&task).Error
+	err := s.DB.Where("task_name = ?", taskName).First(&task).Error
 	if err != nil {
 		return nil
 	}
@@ -61,7 +68,7 @@ func (s *SeedSyncDAO) GetSeedSyncTaskByTaskName(taskName string) *SeedSyncTaskTa
 
 func (s *SeedSyncDAO) GetAllSeedSyncTaskList() []*SeedSyncTaskTable {
 	var tasks []*SeedSyncTaskTable
-	err := s.db.Find(&tasks).Error
+	err := s.DB.Find(&tasks).Error
 	if err != nil {
 		return nil
 	}

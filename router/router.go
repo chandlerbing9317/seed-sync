@@ -4,6 +4,7 @@ import (
 	"seed-sync/cookieCloud"
 	"seed-sync/downloader"
 	"seed-sync/router/middleware"
+	"seed-sync/seedSync"
 	"seed-sync/site"
 
 	"github.com/gin-gonic/gin"
@@ -44,5 +45,9 @@ func InitRouter() *gin.Engine {
 	router.GET("/site/list", site.GetSiteList)
 	router.GET("/site/available-sites", site.GetAvailableSites)
 
+	//辅种相关api
+	router.POST("/seed-sync/create", seedSync.CreateSeedSyncTask)
+	router.POST("/seed-sync/update", seedSync.UpdateSeedSyncTask)
+	router.GET("/seed-sync/list", seedSync.GetSeedSyncTaskList)
 	return router
 }

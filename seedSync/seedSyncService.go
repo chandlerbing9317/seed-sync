@@ -6,11 +6,15 @@ import (
 	"seed-sync/common"
 	"seed-sync/downloader"
 	"seed-sync/log"
+	"seed-sync/scheduler"
 	"seed-sync/seedSyncServer"
 	"seed-sync/site"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 const SEED_SYNC_BATCH_SIZE = 200
@@ -29,60 +33,171 @@ var SeedSyncService = &seedSyncService{
 func (service *seedSyncService) CreateSeedSyncTask(request *CreateSeedSyncTaskRequest) error {
 	service.lock.Lock()
 	defer service.lock.Unlock()
-	err := service.checkCreateParam(request)
-	if err != nil {
-		return err
+	//开启事务
+	tx := service.seedSyncDAO.DB.Begin()
+	if tx.Error != nil {
+		return fmt.Errorf("创建辅种任务失败，错误: %v", tx.Error)
 	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
 	task := &SeedSyncTaskTable{
 		TaskName:     request.TaskName,
 		SiteList:     strings.Join(request.SiteList, ";"),
 		DownloaderId: request.DownloaderId,
 		ExcludePath:  strings.Join(request.ExcludePath, ";"),
 		MinSize:      request.MinSize,
-		AddTag:       request.AddTag,
-		Status:       request.Status,
+		AddTag:       strings.Join(request.AddTag, ";"),
 		CreateTime:   time.Now(),
 		UpdateTime:   time.Now(),
 	}
-	return service.seedSyncDAO.CreateSeedSyncTask(task)
+	err := service.seedSyncDAO.CreateSeedSyncTaskWithTx(tx, task)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("创建辅种任务失败，错误: %v", err)
+	}
+	//为辅种配置定时任务
+	err = scheduler.SchedulerService.CreateSchedulerTaskWithTx(tx, &scheduler.CreateSchedulerTaskRequest{
+		TaskName:       task.TaskName,
+		Cron:           request.Cron,
+		ExecuteContent: common.SYNC_SEED_EXECUTE_CONTENT,
+		Active:         request.Status == common.SEED_SYNC_TASK_STATUS_USED,
+		CreateUser:     "user",
+	})
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	tx.Commit()
+	return nil
 }
 
 // 更新辅种任务
 func (service *seedSyncService) UpdateSeedSyncTask(request *UpdateSeedSyncTaskRequest) error {
 	service.lock.Lock()
 	defer service.lock.Unlock()
-	//参数校验
-	err := service.checkUpdateParam(request)
-	if err != nil {
-		return err
+	//开启事务
+	tx := service.seedSyncDAO.DB.Begin()
+	if tx.Error != nil {
+		return tx.Error
 	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
 	task := &SeedSyncTaskTable{
-		Id:           request.Id,
+		ID:           request.ID,
 		TaskName:     request.TaskName,
 		SiteList:     strings.Join(request.SiteList, ";"),
 		DownloaderId: request.DownloaderId,
 		ExcludePath:  strings.Join(request.ExcludePath, ";"),
 		MinSize:      request.MinSize,
-		AddTag:       request.AddTag,
-		Status:       request.Status,
+		AddTag:       strings.Join(request.AddTag, ";"),
 		UpdateTime:   time.Now(),
 	}
-	return service.seedSyncDAO.UpdateSeedSyncTask(task)
+	err := service.seedSyncDAO.UpdateSeedSyncTaskWithTx(tx, task)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	//更新定时任务
+	err = scheduler.SchedulerService.UpdateSchedulerTaskWithTx(tx, &scheduler.CreateSchedulerTaskRequest{
+		TaskID:         task.ID,
+		TaskName:       task.TaskName,
+		Cron:           request.Cron,
+		ExecuteContent: common.SYNC_SEED_EXECUTE_CONTENT,
+		Active:         request.Status == common.SEED_SYNC_TASK_STATUS_USED,
+		CreateUser:     "user",
+	})
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	tx.Commit()
+	return nil
+}
+
+// 查询所有辅种任务
+func (service *seedSyncService) GetSeedSyncTaskList() ([]*SeedSyncTaskInfo, error) {
+	taskList := service.seedSyncDAO.GetAllSeedSyncTaskList()
+	taskInfoList := make([]*SeedSyncTaskInfo, 0)
+	for _, task := range taskList {
+		schedulerTask := scheduler.SchedulerService.GetSchedulerTaskByTaskIDAndExecuteContent(task.ID, common.SYNC_SEED_EXECUTE_CONTENT)
+		taskInfo := service.getTaskInfo(task, schedulerTask)
+		taskInfoList = append(taskInfoList, taskInfo)
+	}
+	return taskInfoList, nil
+}
+
+// 查询辅种任务
+func (service *seedSyncService) GetSeedSyncTaskByName(taskName string) *SeedSyncTaskInfo {
+	task := service.seedSyncDAO.GetSeedSyncTaskByTaskName(taskName)
+	if task == nil {
+		return nil
+	}
+	schedulerTask := scheduler.SchedulerService.GetSchedulerTaskByTaskIDAndExecuteContent(task.ID, common.SYNC_SEED_EXECUTE_CONTENT)
+	return service.getTaskInfo(task, schedulerTask)
+}
+
+// 查询辅种任务
+func (service *seedSyncService) GetSeedSyncTaskById(id int64) *SeedSyncTaskInfo {
+	task := service.seedSyncDAO.GetSeedSyncTask(id)
+	if task == nil {
+		return nil
+	}
+	schedulerTask := scheduler.SchedulerService.GetSchedulerTaskByTaskIDAndExecuteContent(task.ID, common.SYNC_SEED_EXECUTE_CONTENT)
+	return service.getTaskInfo(task, schedulerTask)
+}
+
+func (service *seedSyncService) getTaskInfo(task *SeedSyncTaskTable, schedulerTask *scheduler.SchedulerTaskTable) *SeedSyncTaskInfo {
+	status := common.SEED_SYNC_TASK_STATUS_STOP
+	if schedulerTask.Active {
+		status = common.SEED_SYNC_TASK_STATUS_USED
+	}
+	return &SeedSyncTaskInfo{
+		ID: task.ID,
+		SeedSyncTaskBaseInfo: SeedSyncTaskBaseInfo{
+			TaskName:     task.TaskName,
+			SiteList:     strings.Split(task.SiteList, ";"),
+			DownloaderId: task.DownloaderId,
+			ExcludePath:  strings.Split(task.ExcludePath, ";"),
+			MinSize:      task.MinSize,
+			AddTag:       strings.Split(task.AddTag, ";"),
+			Status:       status,
+			Cron:         schedulerTask.Cron,
+		},
+		CreateTime: task.CreateTime,
+		UpdateTime: task.UpdateTime,
+	}
+}
+
+func (service *seedSyncService) SeedSyncScheduler(schedulerTask *scheduler.SchedulerTaskTable) error {
+	return service.SeedSync(schedulerTask.TaskID)
 }
 
 // 辅种
-func (service *seedSyncService) SeedSync(taskName string) error {
-	task := service.seedSyncDAO.GetSeedSyncTaskByTaskName(taskName)
+func (service *seedSyncService) SeedSync(taskId int64) error {
+	task := service.GetSeedSyncTaskById(taskId)
 	if task == nil {
-		return errors.New("辅种任务" + taskName + "不存在")
+		return errors.New("辅种任务" + strconv.FormatInt(taskId, 10) + "不存在")
 	}
 	if task.Status != common.SEED_SYNC_TASK_STATUS_USED {
-		return errors.New("辅种任务" + taskName + "状态未启用")
+		return errors.New("辅种任务" + strconv.FormatInt(taskId, 10) + "状态未启用")
 	}
-	return service.doSeedSync(task)
+	log.Info("开始辅种任务", zap.Int64("taskId", taskId), zap.String("taskName", task.TaskName))
+	err := service.doSeedSync(task)
+	if err != nil {
+		log.Error("辅种任务" + strconv.FormatInt(taskId, 10) + "辅种失败", zap.String("taskName", task.TaskName), zap.Error(err))
+		return err
+	}
+	log.Info("辅种任务" + strconv.FormatInt(taskId, 10) + "辅种成功", zap.String("taskName", task.TaskName))
+	return nil
 }
 
-func (service *seedSyncService) doSeedSync(task *SeedSyncTaskTable) error {
+func (service *seedSyncService) doSeedSync(task *SeedSyncTaskInfo) error {
 	//辅种流程：
 	//1. 根据辅种的下载器，去查询下载器下所有的种子
 	//2. 根据辅种配置，过滤部分不辅种的种子
@@ -114,7 +229,7 @@ func (service *seedSyncService) doSeedSync(task *SeedSyncTaskTable) error {
 	}
 	//分批请求和辅种
 	for _, batch := range batchSeeds {
-		request := service.getSeedSyncRequest(batch, task)
+		request := getSeedSyncRequest(batch, task)
 		//无可辅种的种子，跳过
 		if request == nil {
 			continue
@@ -180,77 +295,7 @@ func (service *seedSyncService) downloadAndSyncSeed(srcSeed downloader.SeedHash,
 	return nil
 }
 
-func (service *seedSyncService) checkCreateParam(request *CreateSeedSyncTaskRequest) error {
-	return service.checkParam(&UpdateSeedSyncTaskRequest{
-		TaskName:     request.TaskName,
-		SiteList:     request.SiteList,
-		DownloaderId: request.DownloaderId,
-		ExcludePath:  request.ExcludePath,
-		MinSize:      request.MinSize,
-		AddTag:       request.AddTag,
-		Status:       request.Status,
-	}, true)
-}
-func (service *seedSyncService) checkUpdateParam(request *UpdateSeedSyncTaskRequest) error {
-	return service.checkParam(request, false)
-}
-
-// 参数校验
-func (service *seedSyncService) checkParam(request *UpdateSeedSyncTaskRequest, create bool) error {
-	//参数校验
-	//0. 更新流程任务得存在
-	if !create {
-		task := service.seedSyncDAO.GetSeedSyncTask(request.Id)
-		if task == nil {
-			return errors.New("任务不存在")
-		}
-	}
-
-	//1.任务名称不能为空
-	if request.TaskName == "" {
-		return errors.New("任务名称不能为空")
-	}
-	//2. 任务名不能重复
-	task := service.seedSyncDAO.GetSeedSyncTaskByTaskName(request.TaskName)
-	if create && task != nil {
-	}
-	if create && task != nil {
-		return errors.New("任务名" + request.TaskName + "已存在")
-	} else if !create && task != nil && task.Id != request.Id {
-		return errors.New("任务名" + request.TaskName + "已存在")
-	}
-	//3. 站点名合法
-	if len(request.SiteList) == 0 {
-		return errors.New("站点名不能为空")
-	}
-	siteList, err := site.SiteService.GetSiteList()
-	if err != nil {
-		return err
-	}
-	siteMap := make(map[string]bool)
-	for _, site := range siteList {
-		siteMap[site.SiteName] = true
-	}
-	for _, site := range request.SiteList {
-		if !siteMap[site] {
-			return errors.New("站点名不合法")
-		}
-	}
-	//4. 下载器id合法
-	downloader, err := downloader.DownloaderService.GetDownloaderById(request.DownloaderId)
-	if err != nil {
-		return err
-	}
-	if downloader == nil {
-		return errors.New("下载器不存在")
-	}
-	//5. status合法
-	if request.Status != common.SEED_SYNC_TASK_STATUS_USED && request.Status != common.SEED_SYNC_TASK_STATUS_STOP {
-		return errors.New("任务状态不合法")
-	}
-	return nil
-}
-func (service *seedSyncService) getSeedSyncRequest(seeds []downloader.SeedHash, task *SeedSyncTaskTable) *seedSyncServer.SeedSyncRequest {
+func getSeedSyncRequest(seeds []downloader.SeedHash, task *SeedSyncTaskInfo) *seedSyncServer.SeedSyncRequest {
 	//向服务端请求可辅种的种子
 	infoHashList := make([]string, 0)
 	for _, seed := range seeds {
@@ -258,10 +303,10 @@ func (service *seedSyncService) getSeedSyncRequest(seeds []downloader.SeedHash, 
 		if seed.Size < task.MinSize {
 			continue
 		}
-		if strings.Contains(seed.DownloadDir, task.ExcludePath) {
+		if common.HasSameElement(task.ExcludePath, []string{seed.DownloadDir}) {
 			continue
 		}
-		if common.HasSameElement(strings.Split(task.ExcludeTag, ";"), seed.Tags) {
+		if common.HasSameElement(task.ExcludeTag, seed.Tags) {
 			continue
 		}
 		infoHashList = append(infoHashList, seed.InfoHash)
@@ -271,6 +316,6 @@ func (service *seedSyncService) getSeedSyncRequest(seeds []downloader.SeedHash, 
 	}
 	return &seedSyncServer.SeedSyncRequest{
 		InfoHash: infoHashList,
-		Sites:    strings.Split(task.SiteList, ";"),
+		Sites:    task.SiteList,
 	}
 }

@@ -34,15 +34,15 @@ func (dao *CookieCloudDAO) DeleteCookieCloudConfig() error {
 	return db.SystemParamDao.DeleteSystemParam(CookieCloudConfigKey)
 }
 
-func (dao *CookieCloudDAO) GetCookieCloudConfig() (*CookieCloudConfig, error) {
+func (dao *CookieCloudDAO) GetCookieCloudConfig() *CookieCloudConfig {
 	configBytes, err := db.SystemParamDao.GetSystemParam(CookieCloudConfigKey)
 	if err != nil {
-		return nil, err
+		return nil
 	}
 	config := &CookieCloudConfig{}
 	err = json.Unmarshal([]byte(configBytes), config)
 	if err != nil {
-		return nil, err
+		return nil
 	}
-	return config, nil
+	return config
 }

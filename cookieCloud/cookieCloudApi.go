@@ -68,22 +68,22 @@ func paramCheck(config *CookieCloudConfig) error {
 
 	//参数校验
 	if config.Url == "" || config.UserKey == "" || config.P2pPassword == "" || config.SyncCron == "" {
-		return fmt.Errorf("包含未填的必填项")
+		return fmt.Errorf("%s", "包含未填的必填项")
 	}
 	//url合法性校验
 	if err := common.ValidateURL(config.Url); err != nil {
-		return fmt.Errorf("url不合法" + err.Error())
+		return fmt.Errorf("%s: %s", "url不合法", err.Error())
 	}
 	//规范化url
 	url, err := common.NormalizeURL(config.Url)
 	if err != nil {
-		return fmt.Errorf("url不合法" + err.Error())
+		return fmt.Errorf("%s: %s", "url不合法", err.Error())
 	}
 	config.Url = url
 
 	//cron表达式合法性校验
-	if _, err := common.GetNextExecuteTime(config.SyncCron); err != nil {
-		return fmt.Errorf("cron表达式不合法" + err.Error())
+	if err := common.CheckCronExpr(config.SyncCron); err != nil {
+		return fmt.Errorf("%s: %s", "cron表达式不合法", err.Error())
 	}
 	return nil
 }

@@ -3,13 +3,12 @@ package scheduler
 import (
 	"fmt"
 	"seed-sync/common"
-	"seed-sync/cookieCloud"
 	"seed-sync/log"
-	"seed-sync/seedSyncServer"
 	"sync"
 	"time"
 
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 const (
@@ -19,52 +18,38 @@ const (
 
 type schedulerService struct {
 	schedulerTaskDAO *SchedulerTaskDAO
+	executeFuncMap   map[string]*SchedulerTask
 	lock             sync.Mutex
 }
 
 var SchedulerService = &schedulerService{
 	schedulerTaskDAO: schedulerTaskDAO,
+	executeFuncMap:   make(map[string]*SchedulerTask),
 	lock:             sync.Mutex{},
 }
 
-// 维护一个executeContent与实际执行函数的map
-var executeFuncMap map[string]*SchedulerTask
-
-// 目前在这里统一管控，而非采用注册式，避免杂乱不好找
-func initExecuteFuncMap() {
-	executeFuncMap = map[string]*SchedulerTask{
-		common.CHECK_USER_EXECUTE_CONTENT: {
-			ExecuteContent: common.CHECK_USER_EXECUTE_CONTENT,
-			ExecuteFunc:    seedSyncServer.SeedSyncServerService.CheckUser,
-		},
-		common.GET_SITE_EXECUTE_CONTENT: {
-			ExecuteContent: common.GET_SITE_EXECUTE_CONTENT,
-			ExecuteFunc:    seedSyncServer.SeedSyncServerService.GetSupportedSite,
-		},
-		common.SYNC_COOKIE_CLOUD_EXECUTE_CONTENT: {
-			ExecuteContent: common.SYNC_COOKIE_CLOUD_EXECUTE_CONTENT,
-			ExecuteFunc:    cookieCloud.CookieCloudService.SyncCookie,
-		},
+func (service *schedulerService) RegisterExecuteFunc(executeContent string, executeFunc SchedulerTaskExecuteFunc) {
+	service.lock.Lock()
+	defer service.lock.Unlock()
+	service.executeFuncMap[executeContent] = &SchedulerTask{
+		ExecuteContent: executeContent,
+		ExecuteFunc:    executeFunc,
 	}
-}
-
-func init() {
-	initExecuteFuncMap()
 }
 
 func (service *schedulerService) CreateOrUpdateSchedulerTask(task *CreateSchedulerTaskRequest) error {
 	//根据cron表达式计算下一次执行时间:
 	nextExecuteTime, err := common.GetNextExecuteTime(task.Cron)
 	if err != nil {
-		return err
+		return fmt.Errorf("cron计算下一次执行时间失败，cron: %s, 错误: %v", task.Cron, err)
 	}
 	service.lock.Lock()
 	defer service.lock.Unlock()
 
-	if schedulerTask := schedulerTaskDAO.GetSchedulerTaskByName(task.TaskName); schedulerTask != nil {
+	if schedulerTask := schedulerTaskDAO.GetSchedulerTaskByTaskIDAndExecuteContent(task.TaskID, task.ExecuteContent); schedulerTask != nil {
 		//更新
+		schedulerTask.TaskName = task.TaskName
 		schedulerTask.Cron = task.Cron
-		schedulerTask.ExecuteContent = task.ExecuteContent
 		schedulerTask.Active = task.Active
 		schedulerTask.NextExecuteTime = nextExecuteTime
 		schedulerTask.UpdateTime = time.Now()
@@ -72,6 +57,7 @@ func (service *schedulerService) CreateOrUpdateSchedulerTask(task *CreateSchedul
 	} else {
 		//创建
 		schedulerTask := &SchedulerTaskTable{
+			TaskID:          task.TaskID,
 			TaskName:        task.TaskName,
 			Cron:            task.Cron,
 			ExecuteContent:  task.ExecuteContent,
@@ -85,8 +71,60 @@ func (service *schedulerService) CreateOrUpdateSchedulerTask(task *CreateSchedul
 	}
 }
 
-func (service *schedulerService) GetAllSchedulerTask() ([]*SchedulerTaskTable, error) {
-	return service.schedulerTaskDAO.GetAllSchedulerTask()
+func (service *schedulerService) CreateSchedulerTaskWithTx(tx *gorm.DB, task *CreateSchedulerTaskRequest) error {
+	service.lock.Lock()
+	defer service.lock.Unlock()
+	//校验taskID+executeContent 唯一
+	schedulerTask := service.GetSchedulerTaskByTaskIDAndExecuteContent(task.TaskID, task.ExecuteContent)
+	if schedulerTask != nil {
+		return fmt.Errorf("定时任务taskID:%d,executeContent:%s已存在", task.TaskID, task.ExecuteContent)
+	}
+	return service.createOrUpdateSchedulerTaskWithTx(tx, task)
+}
+
+func (service *schedulerService) UpdateSchedulerTaskWithTx(tx *gorm.DB, task *CreateSchedulerTaskRequest) error {
+	service.lock.Lock()
+	defer service.lock.Unlock()
+	schedulerTask := service.GetSchedulerTaskByTaskIDAndExecuteContent(task.TaskID, task.ExecuteContent)
+	if schedulerTask == nil {
+		return fmt.Errorf("定时任务taskID:%d,executeContent:%s不存在", task.TaskID, task.ExecuteContent)
+	}
+	return service.createOrUpdateSchedulerTaskWithTx(tx, task)
+}
+
+func (service *schedulerService) createOrUpdateSchedulerTaskWithTx(tx *gorm.DB, task *CreateSchedulerTaskRequest) error {
+	//根据cron表达式计算下一次执行时间:
+	nextExecuteTime, err := common.GetNextExecuteTime(task.Cron)
+	if err != nil {
+		return fmt.Errorf("cron计算下一次执行时间失败，cron: %s, 错误: %v", task.Cron, err)
+	}
+	if schedulerTask := schedulerTaskDAO.GetSchedulerTaskByTaskIDAndExecuteContent(task.TaskID, task.ExecuteContent); schedulerTask != nil {
+		//更新
+		schedulerTask.TaskName = task.TaskName
+		schedulerTask.Cron = task.Cron
+		schedulerTask.Active = task.Active
+		schedulerTask.NextExecuteTime = nextExecuteTime
+		schedulerTask.UpdateTime = time.Now()
+		return service.schedulerTaskDAO.UpdateSchedulerTaskWithTx(tx, schedulerTask)
+	} else {
+		//创建
+		schedulerTask := &SchedulerTaskTable{
+			TaskID:          task.TaskID,
+			TaskName:        task.TaskName,
+			ExecuteContent:  task.ExecuteContent,
+			Cron:            task.Cron,
+			Active:          task.Active,
+			NextExecuteTime: nextExecuteTime,
+			CreateUser:      task.CreateUser,
+			CreateTime:      time.Now(),
+			UpdateTime:      time.Now(),
+		}
+		return service.schedulerTaskDAO.CreateSchedulerTaskWithTx(tx, schedulerTask)
+	}
+}
+
+func (service *schedulerService) GetSchedulerTaskByTaskIDAndExecuteContent(taskID int64, executeContent string) *SchedulerTaskTable {
+	return service.schedulerTaskDAO.GetSchedulerTaskByTaskIDAndExecuteContent(taskID, executeContent)
 }
 
 // 执行定时任务
@@ -100,9 +138,9 @@ func (service *schedulerService) ExecuteSchedulerTask() error {
 	for _, task := range tasks {
 		//判断task的时间到了执行时间，且状态是未执行
 		if task.NextExecuteTime.Before(time.Now()) && task.ExecuteStatus == SchedulerTaskStatusNotExecuted {
-			if schedulerTask, ok := executeFuncMap[task.ExecuteContent]; ok {
+			if schedulerTask, ok := service.executeFuncMap[task.ExecuteContent]; ok {
 				//注：这里更新状态不能放在go routine中，
-				//因为先判断未执行再更新为正执行本质是竞态条件，要在同一锁中
+				//因为先判断未执行再更新为正执行属于竞态条件，要在同一锁中
 				task.ExecuteStatus = SchedulerTaskStatusExecuting
 				task.LastExecuteTime = time.Now()
 				service.schedulerTaskDAO.UpdateSchedulerTask(task)
@@ -123,7 +161,7 @@ func (service *schedulerService) doExecute(task *SchedulerTaskTable, schedulerTa
 				service.updateSchedulerTaskResult(task, fmt.Errorf("%v", r))
 			}
 		}()
-		err := schedulerTask.ExecuteFunc()
+		err := schedulerTask.ExecuteFunc(task)
 		service.updateSchedulerTaskResult(task, err)
 	}(task, schedulerTask)
 }

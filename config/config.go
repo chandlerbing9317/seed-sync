@@ -1,21 +1,19 @@
 package config
 
 import (
+	"log"
 	"sync"
 
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 )
 
 type Config struct {
-	LogConfig        LogConfig        `mapstructure:"log"`
-	ProxyConfig      ProxyConfig      `mapstructure:"proxy"`
-	ServerConfig     ServerConfig     `mapstructure:"server"`
-	HttpClientConfig HttpClientConfig `mapstructure:"httpClient"`
+	LogConfig        LogConfig         `mapstructure:"log"`
+	ProxyConfig      ProxyConfig       `mapstructure:"proxy"`
+	ServerConfig     ServerConfig      `mapstructure:"server"`
+	HttpClientConfig HttpClientConfig  `mapstructure:"httpClient"`
 	SiteConfig       SiteConfigManager `mapstructure:"site"`
-}
-
-func init() {
-	InitConfig()
 }
 
 var once sync.Once
@@ -35,7 +33,7 @@ func InitConfig() {
 			viper.SetConfigName(configName)
 			err := viper.ReadInConfig()
 			if err != nil {
-				panic(err)
+				log.Fatal("配置文件读取失败", zap.String("configName", configName), zap.Error(err))
 			}
 
 			switch configName {
@@ -52,7 +50,7 @@ func InitConfig() {
 			}
 
 			if err != nil {
-				panic("配置文件读取失败: " + configName + ", " + err.Error())
+				log.Fatal("配置文件读取失败", zap.String("configName", configName), zap.Error(err))
 			}
 		}
 	})

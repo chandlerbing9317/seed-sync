@@ -2,7 +2,10 @@ package downloader
 
 import (
 	"fmt"
+	"log"
 	"sync"
+
+	"go.uber.org/zap"
 )
 
 type downloaderService struct {
@@ -14,26 +17,30 @@ type downloaderService struct {
 var DownloaderService *downloaderService
 
 // 初始化的时候，从库里查出所有的下载器并初始化保存
-func init() {
-	DownloaderService = &downloaderService{
-		downloaderDAO: downloaderDAO,
-		downloaders:   make(map[string]Downloader),
-		lock:          sync.Mutex{},
-	}
-	downloaderTables := DownloaderService.downloaderDAO.GetAllDownloaders()
-	//遍历数据库的下载器并初始化保存
-	for _, downloaderTable := range downloaderTables {
-		downloader, err := NewDownloader(&DownloaderConfig{
-			Type:     downloaderTable.Type,
-			Url:      downloaderTable.Url,
-			Username: downloaderTable.Username,
-			Password: downloaderTable.Password,
-		})
-		if err != nil {
-			panic(err)
+var once sync.Once
+
+func InitDownloader() {
+	once.Do(func() {
+		DownloaderService = &downloaderService{
+			downloaderDAO: downloaderDAO,
+			downloaders:   make(map[string]Downloader),
+			lock:          sync.Mutex{},
 		}
-		DownloaderService.downloaders[downloaderTable.Name] = downloader
-	}
+		downloaderTables := DownloaderService.downloaderDAO.GetAllDownloaders()
+		//遍历数据库的下载器并初始化保存
+		for _, downloaderTable := range downloaderTables {
+			downloader, err := NewDownloader(&DownloaderConfig{
+				Type:     downloaderTable.Type,
+				Url:      downloaderTable.Url,
+				Username: downloaderTable.Username,
+				Password: downloaderTable.Password,
+			})
+			if err != nil {
+				log.Fatal("初始化下载器失败", zap.Error(err))
+			}
+			DownloaderService.downloaders[downloaderTable.Name] = downloader
+		}
+	})
 }
 
 // 创建下载器

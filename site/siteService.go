@@ -2,10 +2,13 @@ package site
 
 import (
 	"errors"
+	"log"
 	"seed-sync/common"
 	"strings"
 	"sync"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 type siteService struct {
@@ -33,6 +36,23 @@ func (service *siteService) UpdateSite(request *UpdateSiteRequest) error {
 	service.lock.Lock()
 	defer service.lock.Unlock()
 	return service.updateSite(request)
+}
+
+var once sync.Once
+
+func (service *siteService) InitSiteClient() {
+	once.Do(func() {
+		//初始化查询所有站点并创建相应客户端
+		siteList, err := service.siteDao.GetAllSites()
+		if err != nil {
+			log.Fatal("初始化站点客户端失败", zap.Error(err))
+		}
+		for _, site := range siteList {
+			if err := service.createSiteClient(site); err != nil {
+				log.Fatal("初始化站点客户端失败", zap.Error(err))
+			}
+		}
+	})
 }
 
 func (service *siteService) addSite(request *AddSiteRequest) error {
@@ -113,13 +133,10 @@ func (service *siteService) addSite(request *AddSiteRequest) error {
 	}
 
 	//创建站点
-	siteClient, err := Factory.CreateSite(GenerateSiteInfo(siteTable, siteFlowControl))
-	if err != nil {
+	if err := service.createSiteClient(GenerateSiteInfo(siteTable, siteFlowControl)); err != nil {
 		tx.Rollback()
 		return err
 	}
-	service.siteClientMap[siteTable.SiteName] = siteClient
-
 	// 提交事务
 	return tx.Commit().Error
 }
@@ -178,14 +195,29 @@ func (service *siteService) updateSite(request *UpdateSiteRequest) error {
 		tx.Rollback()
 		return err
 	}
-	siteClient := service.siteClientMap[request.SiteName]
-	err := siteClient.Update(GenerateSiteInfo(siteTable, siteFlowControl))
-	if err != nil {
+	if err := service.updateSiteClient(siteTable, siteFlowControl); err != nil {
 		tx.Rollback()
 		return err
 	}
 
 	return tx.Commit().Error
+}
+
+func (service *siteService) createSiteClient(siteInfo *SiteInfo) error {
+	siteClient, err := Factory.CreateSite(siteInfo)
+	if err != nil {
+		return err
+	}
+	service.siteClientMap[siteInfo.SiteName] = siteClient
+	return nil
+}
+
+func (service *siteService) updateSiteClient(siteTable *SiteTable, siteFlowControl *SiteFlowControl) error {
+	siteClient := service.siteClientMap[siteTable.SiteName]
+	if siteClient == nil {
+		return errors.New("站点" + siteTable.SiteName + "不存在")
+	}
+	return siteClient.Update(GenerateSiteInfo(siteTable, siteFlowControl))
 }
 
 // 删除站点
@@ -258,7 +290,7 @@ func (service *siteService) Ping(siteName string) error {
 	return siteClient.Ping()
 }
 
-//获取某个站点的客户端
+// 获取某个站点的客户端
 func (service *siteService) GetSiteClient(siteName string) SiteClient {
 	return service.siteClientMap[siteName]
 }

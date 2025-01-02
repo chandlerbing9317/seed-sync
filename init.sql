@@ -70,9 +70,10 @@ CREATE INDEX IF NOT EXISTS idx_seed_sync_site_flow_control_site_name ON seed_syn
 CREATE TABLE IF NOT EXISTS seed_sync_schedule_task
 (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id INTEGER NOT NULL,
     task_name       TEXT NOT NULL,
-    cron            TEXT NOT NULL,
     execute_content TEXT NOT NULL,
+    cron            TEXT NOT NULL,
     execute_status  TEXT NOT NULL,
     last_execute_time TIMESTAMP,
     next_execute_time TIMESTAMP,
@@ -83,7 +84,7 @@ CREATE TABLE IF NOT EXISTS seed_sync_schedule_task
     update_time     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 -- 创建索引
-CREATE UNIQUE INDEX IF NOT EXISTS idx_seed_sync_schedule_task_task_name ON seed_sync_schedule_task(task_name);
+CREATE INDEX IF NOT EXISTS idx_seed_sync_schedule_task_task_id_execute_content ON seed_sync_schedule_task(task_id,execute_content);
 
 -- 下载器表
 CREATE TABLE IF NOT EXISTS seed_sync_downloader
@@ -111,7 +112,6 @@ CREATE TABLE IF NOT EXISTS seed_sync_seed_task
     exclude_tag     TEXT,
     min_size        INTEGER,
     add_tag         TEXT,
-    status          TEXT NOT NULL,
     create_time     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     update_time     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 )

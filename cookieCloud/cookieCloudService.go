@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"seed-sync/common"
 	"seed-sync/log"
+	"seed-sync/scheduler"
 	"seed-sync/seedSyncServer"
 	"seed-sync/site"
 	"sync"
@@ -14,21 +15,24 @@ import (
 
 // 初始化且对外暴露的单例service
 var CookieCloudService *cookieCloudService
+var once sync.Once
 
-func init() {
-	CookieCloudService = &cookieCloudService{
-		cookieCloudDAO: cookieCloudDAO,
-		lock:           sync.Mutex{},
-	}
-	//查询库中的cookie cloud配置 如果存在就初始化client，用于后续使用
-	config, err := CookieCloudService.cookieCloudDAO.GetCookieCloudConfig()
-	if err != nil {
-		return
-	}
-	CookieCloudService.client, err = NewCookieCloudClient(config)
-	if err != nil {
-		panic(err)
-	}
+func InitCookieCloud() {
+	once.Do(func() {
+		CookieCloudService = &cookieCloudService{
+			cookieCloudDAO: cookieCloudDAO,
+			lock:           sync.Mutex{},
+		}
+		//查询库中的cookie cloud配置 如果存在就初始化client，用于后续使用
+		config := CookieCloudService.cookieCloudDAO.GetCookieCloudConfig()
+		if config != nil {
+			client, err := NewCookieCloudClient(config)
+			if err != nil {
+				log.Fatal("初始化cookie cloud失败", zap.Error(err))
+			}
+			CookieCloudService.client = client
+		}
+	})
 }
 
 type cookieCloudService struct {
@@ -95,6 +99,7 @@ func (service *cookieCloudService) GetCookieCloudConfig() (*CookieCloudConfig, e
 
 // 同步cookieCloud的cookie到站点
 // 如果站点不存在，就自动创建站点
+
 func (service *cookieCloudService) SyncCookie() error {
 	if service.client == nil {
 		return errors.New("未配置cookie cloud")
@@ -103,6 +108,7 @@ func (service *cookieCloudService) SyncCookie() error {
 	if err != nil {
 		return err
 	}
+	//todo: 删除直接获取，改为定时轮询从内存中获取支持的站点
 	err = seedSyncServer.SeedSyncServerService.GetSupportedSite()
 	if err != nil {
 		return err
@@ -129,4 +135,8 @@ func (service *cookieCloudService) SyncCookie() error {
 		return fmt.Errorf("更新站点cookie失败: %v", errs)
 	}
 	return nil
+}
+
+func (service *cookieCloudService) SyncCookieScheduler(schedulerTask *scheduler.SchedulerTaskTable) error {
+	return service.SyncCookie()
 }

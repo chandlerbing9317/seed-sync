@@ -2,8 +2,10 @@ package db
 
 import (
 	"os"
+	"seed-sync/log"
 	"sync"
 
+	"go.uber.org/zap"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -14,10 +16,6 @@ var DB *gorm.DB
 
 // 数据库初始化 拿到DB实例
 
-func init() {
-	InitDb()
-}
-
 func InitDb() {
 	once.Do(func() {
 		var err error
@@ -25,13 +23,13 @@ func InitDb() {
 		// 数据库文件会保存在 data.db
 		DB, err = gorm.Open(sqlite.Open("data.db"), &gorm.Config{})
 		if err != nil {
-			panic("数据库连接失败: " + err.Error())
+			log.Fatal("数据库连接失败", zap.Error(err))
 		}
 
 		// 获取底层的 sqlDB
 		sqlDB, err := DB.DB()
 		if err != nil {
-			panic("获取数据库实例失败: " + err.Error())
+			log.Fatal("获取数据库实例失败", zap.Error(err))
 		}
 
 		// 设置连接池参数
@@ -48,11 +46,11 @@ func initSql() {
 	// 执行初始化SQL
 	initSQL, err := os.ReadFile("init.sql")
 	if err != nil {
-		panic("读取初始化SQL文件失败: " + err.Error())
+		log.Fatal("读取初始化SQL文件失败", zap.Error(err))
 	}
 
 	// 执行SQL语句
 	if err := DB.Exec(string(initSQL)).Error; err != nil {
-		panic("执行初始化SQL失败: " + err.Error())
+		log.Fatal("执行初始化SQL失败", zap.Error(err))
 	}
 }

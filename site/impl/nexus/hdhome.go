@@ -3,28 +3,30 @@ package nexus
 import "seed-sync/site"
 
 const (
-    HdhomeSiteName = "hdhome"
+	HdhomeSiteName = "hdhome"
 )
 
 type HdhomeSite struct {
-    *NexusSite
+	*NexusSite
 }
 
 func (hdhomeSite *HdhomeSite) SiteName() string {
-    return HdhomeSiteName
+	return HdhomeSiteName
 }
 
 func NewHdhomeSite(siteInfo *site.SiteInfo) (site.SiteClient, error) {
-    nexusSite, err := NewNexusSite(siteInfo)
-    if err != nil {
-        return nil, err
-    }
-    return &HdhomeSite{
-        NexusSite: nexusSite.(*NexusSite),
-    }, nil
+	nexusSite, err := NewNexusSite(siteInfo)
+	if err != nil {
+		return nil, err
+	}
+	hdhome := &HdhomeSite{
+		NexusSite: nexusSite.(*NexusSite),
+	}
+	hdhome.BaseSite.SetImplementor(hdhome)
+	return hdhome, nil
 }
 
 // 注册站点
 func init() {
-    site.Factory.RegisterSite(HdhomeSiteName, NewHdhomeSite)
-} 
+	site.Factory.RegisterSite(HdhomeSiteName, NewHdhomeSite)
+}

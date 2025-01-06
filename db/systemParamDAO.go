@@ -2,12 +2,21 @@ package db
 
 import (
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type SystemParamDAO struct {
+	db *gorm.DB
 }
 
-var SystemParamDao = &SystemParamDAO{}
+var SystemParamDao *SystemParamDAO
+
+func InitSystemParamDAO() {
+	SystemParamDao = &SystemParamDAO{
+		db: DB,
+	}
+}
 
 type SystemParam struct {
 	ID         int       `gorm:"column:id"`
@@ -23,7 +32,7 @@ func (s *SystemParam) TableName() string {
 
 func (dao *SystemParamDAO) GetSystemParam(key string) (string, error) {
 	var systemParam SystemParam
-	err := DB.Model(&SystemParam{}).Where("key = ?", key).First(&systemParam).Error
+	err := dao.db.Model(&SystemParam{}).Where("key = ?", key).First(&systemParam).Error
 	if err != nil {
 		return "", err
 	}
@@ -36,19 +45,19 @@ func (dao *SystemParamDAO) CreateSystemParam(key, value string) error {
 	systemParam.Key = key
 	systemParam.Value = value
 	systemParam.CreateTime = time.Now()
-	return DB.Create(&systemParam).Error
+	return dao.db.Create(&systemParam).Error
 }
 
 // 更新
 func (dao *SystemParamDAO) UpdateSystemParam(key, value string) error {
 	var systemParam SystemParam
-	err := DB.Model(&SystemParam{}).Where("key = ?", key).First(&systemParam).Error
+	err := dao.db.Model(&SystemParam{}).Where("key = ?", key).First(&systemParam).Error
 	if err != nil {
 		return err
 	}
 	systemParam.Value = value
 	systemParam.UpdateTime = time.Now()
-	return DB.Save(&systemParam).Error
+	return dao.db.Save(&systemParam).Error
 }
 
 // 删除系统参数

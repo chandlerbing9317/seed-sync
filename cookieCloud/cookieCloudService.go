@@ -17,7 +17,7 @@ import (
 var CookieCloudService *cookieCloudService
 var once sync.Once
 
-func InitCookieCloud() {
+func InitCookieCloudService() {
 	once.Do(func() {
 		CookieCloudService = &cookieCloudService{
 			cookieCloudDAO: cookieCloudDAO,
@@ -105,11 +105,6 @@ func (service *cookieCloudService) SyncCookie() error {
 		return errors.New("未配置cookie cloud")
 	}
 	cookie, err := service.client.GetCookie()
-	if err != nil {
-		return err
-	}
-	//todo: 删除直接获取，改为定时轮询从内存中获取支持的站点
-	err = seedSyncServer.SeedSyncServerService.GetSupportedSite()
 	if err != nil {
 		return err
 	}

@@ -74,17 +74,16 @@ func CheckCronExpr(cronExpr string) error {
 	if cronExpr == "" {
 		return fmt.Errorf("cron表达式不能为空")
 	}
-	parser := cron.NewParser(cron.Second | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
+	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 	_, err := parser.Parse(cronExpr)
 	if err != nil {
-		return fmt.Errorf("%s: %s", "cron表达式不合法", cronExpr)
+		return fmt.Errorf("%s: %s,%v", "cron表达式不合法", cronExpr, err)
 	}
 	return nil
 }
 
 func GetNextExecuteTime(cronExpr string) (time.Time, error) {
-	// 创建一个解析器，支持秒级别的cron表达式
-	parser := cron.NewParser(cron.Second | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
+	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 
 	schedule, err := parser.Parse(cronExpr)
 	if err != nil {

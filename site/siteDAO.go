@@ -13,8 +13,12 @@ type SiteDAO struct {
 	db *gorm.DB
 }
 
-var siteDAO = &SiteDAO{
-	db: db.DB,
+var siteDAO *SiteDAO
+
+func InitSiteDAO() {
+	siteDAO = &SiteDAO{
+		db: db.DB,
+	}
 }
 
 // 站点表，存储的是用户提交的站点信息

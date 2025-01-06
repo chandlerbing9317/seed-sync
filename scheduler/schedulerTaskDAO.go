@@ -11,12 +11,16 @@ type SchedulerTaskDAO struct {
 	db *gorm.DB
 }
 
-var schedulerTaskDAO = &SchedulerTaskDAO{
-	db: db.DB,
+var schedulerTaskDAO *SchedulerTaskDAO
+
+func InitSchedulerTaskDAO() {
+	schedulerTaskDAO = &SchedulerTaskDAO{
+		db: db.DB,
+	}
 }
 
 type SchedulerTaskTable struct {
-	ID                int64     `gorm:"primaryKey;autoIncrement"`
+	ID int64 `gorm:"primaryKey;autoIncrement"`
 	//关联的外键任务id，这个id不唯一，id+executeContent才唯一，因为定时任务可能来自不同的表
 	TaskID            int64     `gorm:"column:task_id"`
 	TaskName          string    `gorm:"column:task_name"`
@@ -30,6 +34,10 @@ type SchedulerTaskTable struct {
 	CreateUser        string    `gorm:"column:create_user"`
 	CreateTime        time.Time `gorm:"column:create_time"`
 	UpdateTime        time.Time `gorm:"column:update_time"`
+}
+
+func (*SchedulerTaskTable) TableName() string {
+	return "seed_sync_schedule_task"
 }
 
 func (dao *SchedulerTaskDAO) GetSchedulerTaskByTaskIDAndExecuteContent(taskID int64, executeContent string) *SchedulerTaskTable {

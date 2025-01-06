@@ -105,17 +105,38 @@ func (t *TransmissionClient) GetSeedsHash() ([]SeedHash, error) {
 	if err != nil {
 		return nil, err
 	}
-	//处理response
-	hashes := make([]SeedHash, 0)
-	for _, arg := range response.Arguments {
-		hash := arg.(TransmissionTorrentSeedHash)
-		hashes = append(hashes, SeedHash{
-			InfoHash:    hash.InfoHash,
-			Size:        hash.TotalSize,
-			Tags:        hash.Labels,
-			DownloadDir: hash.DownloadDir,
-		})
+
+	// 获取 torrents 数组
+	torrentsData, ok := response.Arguments["torrents"].([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected response format: torrents array not found")
 	}
+
+	hashes := make([]SeedHash, 0)
+	for _, torrent := range torrentsData {
+		torrentMap, ok := torrent.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		hash := SeedHash{
+			ID:          int64(torrentMap["id"].(float64)),
+			InfoHash:    torrentMap["hashString"].(string),
+			Size:        int64(torrentMap["totalSize"].(float64)),
+			DownloadDir: torrentMap["downloadDir"].(string),
+		}
+
+		// 处理 labels
+		if labels, ok := torrentMap["labels"].([]interface{}); ok {
+			hash.Tags = make([]string, len(labels))
+			for i, label := range labels {
+				hash.Tags[i] = label.(string)
+			}
+		}
+
+		hashes = append(hashes, hash)
+	}
+
 	return hashes, nil
 }
 

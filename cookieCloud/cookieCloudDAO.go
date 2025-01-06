@@ -3,6 +3,8 @@ package cookieCloud
 import (
 	"encoding/json"
 	"seed-sync/db"
+
+	"gorm.io/gorm"
 )
 
 const (
@@ -10,16 +12,25 @@ const (
 )
 
 type CookieCloudDAO struct {
+	db *gorm.DB
+	systemParamDao *db.SystemParamDAO
 }
 
-var cookieCloudDAO = &CookieCloudDAO{}
+var cookieCloudDAO *CookieCloudDAO
+
+func InitCookieCloudDAO() {
+	cookieCloudDAO = &CookieCloudDAO{
+		db: db.DB,
+		systemParamDao: db.SystemParamDao,
+	}
+}
 
 func (dao *CookieCloudDAO) CreateCookieCloudConfig(config *CookieCloudConfig) error {
 	configBytes, err := json.Marshal(config)
 	if err != nil {
 		return err
 	}
-	return db.SystemParamDao.CreateSystemParam(CookieCloudConfigKey, string(configBytes))
+	return dao.systemParamDao.CreateSystemParam(CookieCloudConfigKey, string(configBytes))
 }
 
 func (dao *CookieCloudDAO) UpdateCookieCloudConfig(config *CookieCloudConfig) error {
@@ -27,15 +38,15 @@ func (dao *CookieCloudDAO) UpdateCookieCloudConfig(config *CookieCloudConfig) er
 	if err != nil {
 		return err
 	}
-	return db.SystemParamDao.UpdateSystemParam(CookieCloudConfigKey, string(configBytes))
+	return dao.systemParamDao.UpdateSystemParam(CookieCloudConfigKey, string(configBytes))
 }
 
 func (dao *CookieCloudDAO) DeleteCookieCloudConfig() error {
-	return db.SystemParamDao.DeleteSystemParam(CookieCloudConfigKey)
+	return dao.systemParamDao.DeleteSystemParam(CookieCloudConfigKey)
 }
 
 func (dao *CookieCloudDAO) GetCookieCloudConfig() *CookieCloudConfig {
-	configBytes, err := db.SystemParamDao.GetSystemParam(CookieCloudConfigKey)
+	configBytes, err := dao.systemParamDao.GetSystemParam(CookieCloudConfigKey)
 	if err != nil {
 		return nil
 	}

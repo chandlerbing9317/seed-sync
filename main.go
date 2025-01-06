@@ -4,7 +4,6 @@ import (
 	initPkg "seed-sync/init"
 	"seed-sync/log"
 	"seed-sync/router"
-	_ "seed-sync/site/impl/nexus"
 
 	"go.uber.org/zap"
 )

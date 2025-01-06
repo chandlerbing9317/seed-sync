@@ -3,28 +3,30 @@ package nexus
 import "seed-sync/site"
 
 const (
-    BtschoolSiteName = "btschool"
+	BtschoolSiteName = "btschool"
 )
 
 type BtschoolSite struct {
-    *NexusSite
+	*NexusSite
 }
 
 func (btschoolSite *BtschoolSite) SiteName() string {
-    return BtschoolSiteName
+	return BtschoolSiteName
 }
 
 func NewBtschoolSite(siteInfo *site.SiteInfo) (site.SiteClient, error) {
-    nexusSite, err := NewNexusSite(siteInfo)
-    if err != nil {
-        return nil, err
-    }
-    return &BtschoolSite{
-        NexusSite: nexusSite.(*NexusSite),
-    }, nil
+	nexusSite, err := NewNexusSite(siteInfo)
+	if err != nil {
+		return nil, err
+	}
+	btschool := &BtschoolSite{
+		NexusSite: nexusSite.(*NexusSite),
+	}
+	btschool.BaseSite.SetImplementor(btschool)
+	return btschool, nil
 }
 
 // 注册站点
 func init() {
-    site.Factory.RegisterSite(BtschoolSiteName, NewBtschoolSite)
-} 
+	site.Factory.RegisterSite(BtschoolSiteName, NewBtschoolSite)
+}

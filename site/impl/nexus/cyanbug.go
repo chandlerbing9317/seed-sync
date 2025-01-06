@@ -19,9 +19,11 @@ func NewCyanbugSite(siteInfo *site.SiteInfo) (site.SiteClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &CyanbugSite{
+	cyanbug := &CyanbugSite{
 		NexusSite: nexusSite.(*NexusSite),
-	}, nil
+	}
+	cyanbug.BaseSite.SetImplementor(cyanbug)
+	return cyanbug, nil
 }
 
 // 注册站点

@@ -12,7 +12,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_seed_sync_system_param_key ON seed_sync_sy
 
 
 -- 用户表
-CREATE TABLE IF NOT EXISTS user
+CREATE TABLE IF NOT EXISTS seed_sync_user
 (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     username        TEXT NOT NULL,
@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS seed_sync_site_flow_control
     update_time     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 -- 创建索引
-CREATE INDEX IF NOT EXISTS idx_seed_sync_site_flow_control_site_name ON seed_sync_site_flow_control(site_name);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_seed_sync_site_flow_control_site_name ON seed_sync_site_flow_control(site_name);
 
 
 -- 定时任务表

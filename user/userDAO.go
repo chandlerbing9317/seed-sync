@@ -11,11 +11,15 @@ type UserDAO struct {
 	db *gorm.DB
 }
 
-var userDAO = &UserDAO{
-	db: db.DB,
+var userDAO *UserDAO
+
+func InitUserDAO() {
+	userDAO = &UserDAO{
+		db: db.DB,
+	}
 }
 
-type User struct {
+type UserTable struct {
 	Id            int       `json:"id" gorm:"column:id"`
 	Username      string    `json:"username" gorm:"column:username"`
 	Password      string    `json:"password" gorm:"column:password"`
@@ -27,22 +31,22 @@ type User struct {
 	UpdateTime    time.Time `json:"update_time" gorm:"column:update_time"`
 }
 
-func (u *User) TableName() string {
+func (u *UserTable) TableName() string {
 	return "seed_sync_user"
 }
 
-// 根据用户名获取用户
-func (dao *UserDAO) GetUserByUsername(username string) *User {
-	user := &User{}
-	if err := dao.db.Where("username = ?", username).First(user).Error; err != nil {
+// 查询用户
+func (dao *UserDAO) GetUser() *UserTable {
+	user := &UserTable{}
+	if err := dao.db.First(user).Error; err != nil {
 		return nil
 	}
 	return user
 }
 
 // 创建或更新用户
-func (dao *UserDAO) CreateOrUpdateUser(user *User) error {
-	userData := dao.GetUserByUsername(user.Username)
+func (dao *UserDAO) CreateOrUpdateUser(user *UserTable) error {
+	userData := dao.GetUser()
 	if userData == nil {
 		return dao.db.Create(user).Error
 	}
@@ -54,6 +58,6 @@ func (dao *UserDAO) CreateOrUpdateUser(user *User) error {
 // 统计用户数量
 func (dao *UserDAO) CountUser() int64 {
 	var count int64
-	dao.db.Model(&User{}).Count(&count)
+	dao.db.Model(&UserTable{}).Count(&count)
 	return count
 }

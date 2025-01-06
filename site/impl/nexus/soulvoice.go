@@ -3,28 +3,30 @@ package nexus
 import "seed-sync/site"
 
 const (
-    SoulvoiceSiteName = "soulvoice"
+	SoulvoiceSiteName = "soulvoice"
 )
 
 type SoulvoiceSite struct {
-    *NexusSite
+	*NexusSite
 }
 
 func (soulvoiceSite *SoulvoiceSite) SiteName() string {
-    return SoulvoiceSiteName
+	return SoulvoiceSiteName
 }
 
 func NewSoulvoiceSite(siteInfo *site.SiteInfo) (site.SiteClient, error) {
-    nexusSite, err := NewNexusSite(siteInfo)
-    if err != nil {
-        return nil, err
-    }
-    return &SoulvoiceSite{
-        NexusSite: nexusSite.(*NexusSite),
-    }, nil
+	nexusSite, err := NewNexusSite(siteInfo)
+	if err != nil {
+		return nil, err
+	}
+	soulvoice := &SoulvoiceSite{
+		NexusSite: nexusSite.(*NexusSite),
+	}
+	soulvoice.BaseSite.SetImplementor(soulvoice)
+	return soulvoice, nil
 }
 
 // 注册站点
 func init() {
-    site.Factory.RegisterSite(SoulvoiceSiteName, NewSoulvoiceSite)
-} 
+	site.Factory.RegisterSite(SoulvoiceSiteName, NewSoulvoiceSite)
+}

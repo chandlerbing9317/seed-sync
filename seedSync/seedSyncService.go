@@ -9,6 +9,7 @@ import (
 	"seed-sync/scheduler"
 	"seed-sync/seedSyncServer"
 	"seed-sync/site"
+	"seed-sync/user"
 	"strconv"
 	"strings"
 	"sync"
@@ -24,9 +25,18 @@ type seedSyncService struct {
 	lock        sync.Mutex
 }
 
-var SeedSyncService = &seedSyncService{
-	seedSyncDAO: seedSyncDAO,
-	lock:        sync.Mutex{},
+var SeedSyncService *seedSyncService
+
+// 初始化的时候，从库里查出所有的辅种任务并初始化保存
+var once sync.Once
+
+func InitSeedSyncService() {
+	once.Do(func() {
+		SeedSyncService = &seedSyncService{
+			seedSyncDAO: seedSyncDAO,
+			lock:        sync.Mutex{},
+		}
+	})
 }
 
 // 创建辅种任务
@@ -53,13 +63,23 @@ func (service *seedSyncService) CreateSeedSyncTask(request *CreateSeedSyncTaskRe
 		CreateTime:   time.Now(),
 		UpdateTime:   time.Now(),
 	}
+	// 创建任务
 	err := service.seedSyncDAO.CreateSeedSyncTaskWithTx(tx, task)
 	if err != nil {
 		tx.Rollback()
 		return fmt.Errorf("创建辅种任务失败，错误: %v", err)
 	}
+
+	// 获取刚创建的任务ID
+	newTask := service.seedSyncDAO.GetSeedSyncTaskByTaskNameWithTx(tx, task.TaskName)
+	if newTask == nil {
+		tx.Rollback()
+		return fmt.Errorf("创建辅种任务失败，错误: %v", err)
+	}
+
 	//为辅种配置定时任务
 	err = scheduler.SchedulerService.CreateSchedulerTaskWithTx(tx, &scheduler.CreateSchedulerTaskRequest{
+		TaskID:         newTask.ID, // 使用获取到的ID
 		TaskName:       task.TaskName,
 		Cron:           request.Cron,
 		ExecuteContent: common.SYNC_SEED_EXECUTE_CONTENT,
@@ -190,10 +210,10 @@ func (service *seedSyncService) SeedSync(taskId int64) error {
 	log.Info("开始辅种任务", zap.Int64("taskId", taskId), zap.String("taskName", task.TaskName))
 	err := service.doSeedSync(task)
 	if err != nil {
-		log.Error("辅种任务" + strconv.FormatInt(taskId, 10) + "辅种失败", zap.String("taskName", task.TaskName), zap.Error(err))
+		log.Error("辅种任务"+strconv.FormatInt(taskId, 10)+"辅种失败", zap.String("taskName", task.TaskName), zap.Error(err))
 		return err
 	}
-	log.Info("辅种任务" + strconv.FormatInt(taskId, 10) + "辅种成功", zap.String("taskName", task.TaskName))
+	log.Info("辅种任务"+strconv.FormatInt(taskId, 10)+"辅种成功", zap.String("taskName", task.TaskName))
 	return nil
 }
 
@@ -234,7 +254,7 @@ func (service *seedSyncService) doSeedSync(task *SeedSyncTaskInfo) error {
 		if request == nil {
 			continue
 		}
-		response, err := seedSyncServer.SeedSyncServerClient.SyncSeed(request)
+		response, err := seedSyncServer.SeedSyncServerService.SeedSync(request, user.UserService.GetUser().Token)
 		if err != nil {
 			return fmt.Errorf("辅种失败：向seedSyncServer请求辅种种子失败， 错误: %v", err)
 		}
@@ -275,8 +295,9 @@ func (service *seedSyncService) downloadAndSyncSeed(srcSeed downloader.SeedHash,
 	if siteClient == nil {
 		return fmt.Errorf("辅种失败：站点客户端不存在，站点名称: %s", seedForSync.SiteName)
 	}
-	//下载种子
+	//下载种子 //todo 这里要加一定的休眠 避免太快触发限流 但休眠按站点加，每个站点并行处理
 	bytes, err := siteClient.DownloadTorrent(seedForSync.TorrentId)
+	time.Sleep(5 * time.Second)
 	if err != nil {
 		return fmt.Errorf("辅种失败：下载种子失败，站点名称: %s,种子id: %d, 错误: %v", seedForSync.SiteName, seedForSync.TorrentId, err)
 	}

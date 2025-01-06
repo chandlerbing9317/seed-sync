@@ -7,15 +7,14 @@ import (
 	"time"
 )
 
-
-//全局http client
-//可复用，为避免频繁创建http client 导致服务端网络开销过大
+// 全局http client
+// 可复用，为避免频繁创建http client 导致服务端网络开销过大
 var (
 	DefaultHttpClient *http.Client
 	ProxyHttpClient   *http.Client
 )
 
-func init() {
+func InitHttpClient() {
 	DefaultHttpClient = NewHttpClient(config.Conf.HttpClientConfig, false)
 	ProxyHttpClient = NewHttpClient(config.Conf.HttpClientConfig, true)
 }

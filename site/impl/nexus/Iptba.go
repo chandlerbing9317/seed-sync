@@ -19,9 +19,11 @@ func New1PtbaSite(siteInfo *site.SiteInfo) (site.SiteClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &IptbaSite{
+	iptba := &IptbaSite{
 		NexusSite: nexusSite.(*NexusSite),
-	}, nil
+	}
+	iptba.BaseSite.SetImplementor(iptba)
+	return iptba, nil
 }
 
 // 注册站点

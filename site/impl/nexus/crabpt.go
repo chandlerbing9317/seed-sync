@@ -3,28 +3,30 @@ package nexus
 import "seed-sync/site"
 
 const (
-    CrabptSiteName = "crabpt"
+	CrabptSiteName = "crabpt"
 )
 
 type CrabptSite struct {
-    *NexusSite
+	*NexusSite
 }
 
 func (crabptSite *CrabptSite) SiteName() string {
-    return CrabptSiteName
+	return CrabptSiteName
 }
 
 func NewCrabptSite(siteInfo *site.SiteInfo) (site.SiteClient, error) {
-    nexusSite, err := NewNexusSite(siteInfo)
-    if err != nil {
-        return nil, err
-    }
-    return &CrabptSite{
-        NexusSite: nexusSite.(*NexusSite),
-    }, nil
+	nexusSite, err := NewNexusSite(siteInfo)
+	if err != nil {
+		return nil, err
+	}
+	crabpt := &CrabptSite{
+		NexusSite: nexusSite.(*NexusSite),
+	}
+	crabpt.BaseSite.SetImplementor(crabpt)
+	return crabpt, nil
 }
 
 // 注册站点
 func init() {
-    site.Factory.RegisterSite(CrabptSiteName, NewCrabptSite)
-} 
+	site.Factory.RegisterSite(CrabptSiteName, NewCrabptSite)
+}

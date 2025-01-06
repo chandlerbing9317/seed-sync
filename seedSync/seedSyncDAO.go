@@ -11,8 +11,12 @@ type SeedSyncDAO struct {
 	DB *gorm.DB
 }
 
-var seedSyncDAO = &SeedSyncDAO{
-	DB: db.DB,
+var seedSyncDAO *SeedSyncDAO
+
+func InitSeedSyncDAO() {
+	seedSyncDAO = &SeedSyncDAO{
+		DB: db.DB,
+	}
 }
 
 type SeedSyncTaskTable struct {
@@ -60,6 +64,15 @@ func (s *SeedSyncDAO) GetSeedSyncTask(id int64) *SeedSyncTaskTable {
 func (s *SeedSyncDAO) GetSeedSyncTaskByTaskName(taskName string) *SeedSyncTaskTable {
 	var task SeedSyncTaskTable
 	err := s.DB.Where("task_name = ?", taskName).First(&task).Error
+	if err != nil {
+		return nil
+	}
+	return &task
+}
+
+func (s *SeedSyncDAO) GetSeedSyncTaskByTaskNameWithTx(tx *gorm.DB, taskName string) *SeedSyncTaskTable {
+	var task SeedSyncTaskTable
+	err := tx.Where("task_name = ?", taskName).First(&task).Error
 	if err != nil {
 		return nil
 	}

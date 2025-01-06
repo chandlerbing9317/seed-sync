@@ -1,6 +1,7 @@
 package log
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"seed-sync/config"
@@ -60,10 +61,10 @@ func getEncoder() zapcore.Encoder {
 		MessageKey:     "msg",
 		StacktraceKey:  "stacktrace",
 		LineEnding:     zapcore.DefaultLineEnding,
-		EncodeLevel:    customLevelEncoder, // 使用自定义的级别编码器
-		EncodeTime:     customTimeEncoder,  // 自定义时间格式
+		EncodeLevel:    customLevelEncoder,
+		EncodeTime:     customTimeEncoder,
 		EncodeDuration: zapcore.StringDurationEncoder,
-		EncodeCaller:   zapcore.ShortCallerEncoder,
+		EncodeCaller:   customCallerEncoder,
 	}
 
 	return zapcore.NewConsoleEncoder(encoderConfig)
@@ -77,6 +78,12 @@ func customLevelEncoder(level zapcore.Level, enc zapcore.PrimitiveArrayEncoder) 
 // customTimeEncoder 自定义时间编码器
 func customTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 	enc.AppendString(t.Format("2006-01-02 15:04:05"))
+}
+
+// customCallerEncoder 自定义caller编码器，使用固定宽度
+func customCallerEncoder(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
+	// 使用%3d确保行号占用3位，右对齐
+	enc.AppendString(fmt.Sprintf("%s:%03d", caller.TrimmedPath(), caller.Line))
 }
 
 // getWriteSyncer 获取日志写入器

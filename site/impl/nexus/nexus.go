@@ -28,7 +28,8 @@ func (nexusSite *NexusSite) GetHttpHeader() map[string]string {
 }
 
 func NewNexusSite(siteInfo *site.SiteInfo) (site.SiteClient, error) {
-	return &NexusSite{
-		BaseSite: site.NewBaseSite(siteInfo),
-	}, nil
+	base := site.NewBaseSite(siteInfo)
+	nexus := &NexusSite{BaseSite: base}
+	base.SetImplementor(nexus)
+	return nexus, nil
 }

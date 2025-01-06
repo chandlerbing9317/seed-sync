@@ -19,7 +19,7 @@ var DownloaderService *downloaderService
 // 初始化的时候，从库里查出所有的下载器并初始化保存
 var once sync.Once
 
-func InitDownloader() {
+func InitDownloaderService() {
 	once.Do(func() {
 		DownloaderService = &downloaderService{
 			downloaderDAO: downloaderDAO,

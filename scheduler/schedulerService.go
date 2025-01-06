@@ -22,10 +22,37 @@ type schedulerService struct {
 	lock             sync.Mutex
 }
 
-var SchedulerService = &schedulerService{
-	schedulerTaskDAO: schedulerTaskDAO,
-	executeFuncMap:   make(map[string]*SchedulerTask),
-	lock:             sync.Mutex{},
+var SchedulerService *schedulerService
+
+// 初始化的时候，从库里查出所有的定时任务并初始化保存
+var once sync.Once
+
+func InitSchedulerService() {
+	once.Do(func() {
+		SchedulerService = &schedulerService{
+			schedulerTaskDAO: schedulerTaskDAO,
+			executeFuncMap:   make(map[string]*SchedulerTask),
+			lock:             sync.Mutex{},
+		}
+		SchedulerService.resetSchedulerService()
+	})
+}
+
+// 服务初始化的时候，重置所有定时任务的下一次执行时间和状态
+func (service *schedulerService) resetSchedulerService() {
+	tasks, err := service.schedulerTaskDAO.GetActiveSchedulerTask()
+	if err != nil {
+		log.Fatal("初始化获取定时任务失败", zap.Error(err))
+	}
+	for _, task := range tasks {
+		nextExecuteTime, err := common.GetNextExecuteTime(task.Cron)
+		if err != nil {
+			log.Fatal("初始化cron计算下一次执行时间失败", zap.String("cron", task.Cron), zap.Error(err))
+		}
+		task.NextExecuteTime = nextExecuteTime
+		task.ExecuteStatus = SchedulerTaskStatusNotExecuted
+		service.schedulerTaskDAO.UpdateSchedulerTask(task)
+	}
 }
 
 func (service *schedulerService) RegisterExecuteFunc(executeContent string, executeFunc SchedulerTaskExecuteFunc) {
@@ -112,6 +139,7 @@ func (service *schedulerService) createOrUpdateSchedulerTaskWithTx(tx *gorm.DB, 
 			TaskID:          task.TaskID,
 			TaskName:        task.TaskName,
 			ExecuteContent:  task.ExecuteContent,
+			ExecuteStatus:   SchedulerTaskStatusNotExecuted,
 			Cron:            task.Cron,
 			Active:          task.Active,
 			NextExecuteTime: nextExecuteTime,

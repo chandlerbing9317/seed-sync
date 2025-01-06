@@ -20,20 +20,31 @@ type SiteClient interface {
 
 // 基础站点，对BaseSite接口的实现
 type BaseSite struct {
-	SiteInfo *SiteInfo
-	Config   config.SiteBaseConfig
+	SiteInfo    *SiteInfo
+	Config      config.SiteBaseConfig
+	rateLimiter *RateLimiter
+	//golang的弊端，只支持组合不支持继承，因此要想拿到子类的实现只能这里持有子类
+	impl SiteImplementor
+}
+
+// 定义一个新接口，只包含需要子类实现的方法
+type SiteImplementor interface {
+	GetDownloadUrl(torrentId int) string
+	GetPingUrl() string
+	GetHttpHeader() map[string]string
 }
 
 func NewBaseSite(siteInfo *SiteInfo) *BaseSite {
-	return &BaseSite{
-		SiteInfo: siteInfo,
-		Config:   config.Conf.SiteConfig.GetSiteConfig(siteInfo.SiteName),
+	base := &BaseSite{
+		SiteInfo:    siteInfo,
+		Config:      config.Conf.SiteConfig.GetSiteConfig(siteInfo.SiteName),
+		rateLimiter: NewRateLimiter(siteInfo.SiteName, siteInfo.MaxPerMin, siteInfo.MaxPerHour, siteInfo.MaxPerDay),
 	}
+	return base
 }
 
-// 根据种子id下载种子文件
 func (baseSite *BaseSite) DownloadTorrent(torrentId int) ([]byte, error) {
-	requestUrl := baseSite.GetDownloadUrl(torrentId)
+	requestUrl := baseSite.impl.GetDownloadUrl(torrentId)
 	requestClient, err := baseSite.GetRequestClient()
 	if err != nil {
 		return nil, err
@@ -53,12 +64,13 @@ func (baseSite *BaseSite) DownloadTorrent(torrentId int) ([]byte, error) {
 
 func (baseSite *BaseSite) Update(siteInfo *SiteInfo) error {
 	baseSite.SiteInfo = siteInfo
+	baseSite.rateLimiter = NewRateLimiter(siteInfo.SiteName, siteInfo.MaxPerMin, siteInfo.MaxPerHour, siteInfo.MaxPerDay)
 	return nil
 }
 
 // 站点ping功能，检测站点是否可用
 func (baseSite *BaseSite) Ping() error {
-	requestUrl := baseSite.GetPingUrl()
+	requestUrl := baseSite.impl.GetPingUrl()
 	requestClient, err := baseSite.GetRequestClient()
 	if err != nil {
 		return err
@@ -89,6 +101,10 @@ func (baseSite *BaseSite) GetHttpHeader() map[string]string {
 			}
 		}
 	}
+	//处理cookie
+	if len(baseSite.SiteInfo.Cookie) > 0 {
+		header["Cookie"] = baseSite.SiteInfo.Cookie
+	}
 	return header
 }
 
@@ -100,11 +116,12 @@ func (baseSite *BaseSite) GetRequestClient() (*http.Client, error) {
 		baseClient = common.DefaultHttpClient
 	}
 
-	//处理header
+	//处理header和限流
 	headers := baseSite.GetHttpHeader()
-	customTransport := &roundTripperWithHeaders{
-		headers:  headers,
-		original: baseClient.Transport,
+	customTransport := &rateLimitedRoundTripper{
+		rateLimiter: baseSite.rateLimiter,
+		headers:     headers,
+		original:    baseClient.Transport,
 	}
 
 	return &http.Client{
@@ -128,16 +145,29 @@ func (baseSite *BaseSite) GetPingUrl() string {
 	return ""
 }
 
-// 定义一个自定义的 RoundTripper
-type roundTripperWithHeaders struct {
-	headers  map[string]string
-	original http.RoundTripper
+// 定义一个带限流的 RoundTripper
+type rateLimitedRoundTripper struct {
+	rateLimiter *RateLimiter
+	headers     map[string]string
+	original    http.RoundTripper
 }
 
-func (rth *roundTripperWithHeaders) RoundTrip(req *http.Request) (*http.Response, error) {
-	// 添加默认请求头
-	for key, value := range rth.headers {
+// 限流检测
+func (rlt *rateLimitedRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	// 先检查限流
+	if err := rlt.rateLimiter.Allow(); err != nil {
+		return nil, err
+	}
+
+	// 添加请求头
+	for key, value := range rlt.headers {
 		req.Header.Set(key, value)
 	}
-	return rth.original.RoundTrip(req)
+
+	return rlt.original.RoundTrip(req)
+}
+
+// 允许子类设置自己作为实现
+func (baseSite *BaseSite) SetImplementor(impl SiteImplementor) {
+	baseSite.impl = impl
 }

@@ -4,6 +4,9 @@ import (
 	"errors"
 	"log"
 	"seed-sync/common"
+	"seed-sync/scheduler"
+	"seed-sync/seedSyncServer"
+	"seed-sync/user"
 	"strings"
 	"sync"
 	"time"
@@ -17,13 +20,8 @@ type siteService struct {
 	lock          sync.Mutex
 }
 
-var SiteService = &siteService{
-	siteDao:       siteDAO,
-	siteClientMap: make(map[string]SiteClient),
-	lock:          sync.Mutex{},
-}
+var SiteService *siteService
 
-// 添加站点
 // 添加站点
 func (service *siteService) AddSite(request *AddSiteRequest) error {
 	service.lock.Lock()
@@ -40,15 +38,20 @@ func (service *siteService) UpdateSite(request *UpdateSiteRequest) error {
 
 var once sync.Once
 
-func (service *siteService) InitSiteClient() {
+func InitSiteService() {
 	once.Do(func() {
+		SiteService = &siteService{
+			siteDao:       siteDAO,
+			siteClientMap: make(map[string]SiteClient),
+			lock:          sync.Mutex{},
+		}
 		//初始化查询所有站点并创建相应客户端
-		siteList, err := service.siteDao.GetAllSites()
+		siteList, err := SiteService.siteDao.GetAllSites()
 		if err != nil {
 			log.Fatal("初始化站点客户端失败", zap.Error(err))
 		}
 		for _, site := range siteList {
-			if err := service.createSiteClient(site); err != nil {
+			if err := SiteService.createSiteClient(site); err != nil {
 				log.Fatal("初始化站点客户端失败", zap.Error(err))
 			}
 		}
@@ -293,4 +296,22 @@ func (service *siteService) Ping(siteName string) error {
 // 获取某个站点的客户端
 func (service *siteService) GetSiteClient(siteName string) SiteClient {
 	return service.siteClientMap[siteName]
+}
+
+func (service *siteService) GetSupportedSiteScheduler(schedulerTask *scheduler.SchedulerTaskTable) error {
+	return service.GetSupportedSite()
+}
+
+func (service *siteService) GetSupportedSite() error {
+	supportedSites, err := seedSyncServer.SeedSyncServerService.GetSupportedSite(user.UserService.GetUser().Token)
+	if err != nil {
+		return err
+	}
+	supportedSiteMap := make(map[string]seedSyncServer.SupportSiteResponse)
+	for _, site := range supportedSites {
+		supportedSiteMap[site.SiteName] = site
+	}
+	// 缓存支持的站点，用于添加站点时校验
+	common.CacheSetObject(common.SUPPORT_SITE_CACHE_KEY, supportedSiteMap)
+	return nil
 }

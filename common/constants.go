@@ -22,8 +22,9 @@ const (
 
 // user available status
 const (
-	USER_AVAILABLE_STATUS_AVAILABLE   = "AVAILABLE"
-	USER_AVAILABLE_STATUS_UNAVAILABLE = "UNAVAILABLE"
+	USER_STATUS_NORMAL         = "normal"
+	USER_STATUS_NOT_AUTHORIZED = "not_authorized"
+	USER_STATUS_BAN            = "ban"
 )
 
 // cache key

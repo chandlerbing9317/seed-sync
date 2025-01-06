@@ -11,8 +11,12 @@ type DownloaderDAO struct {
 	db *gorm.DB
 }
 
-var downloaderDAO = &DownloaderDAO{
-	db: db.DB,
+var downloaderDAO *DownloaderDAO
+
+func InitDownloaderDAO() {
+	downloaderDAO = &DownloaderDAO{
+		db: db.DB,
+	}
 }
 
 type DownloaderTable struct {

@@ -33,6 +33,7 @@ type DownloaderConfig struct {
 }
 
 type SeedHash struct {
+	ID          int64
 	InfoHash    string
 	Size        int64
 	Tags        []string

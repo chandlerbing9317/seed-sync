@@ -19,9 +19,11 @@ func NewHhanSite(siteInfo *site.SiteInfo) (site.SiteClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &HhanSite{
+	hhan := &HhanSite{
 		NexusSite: nexusSite.(*NexusSite),
-	}, nil
+	}
+	hhan.BaseSite.SetImplementor(hhan)
+	return hhan, nil
 }
 
 // 注册站点

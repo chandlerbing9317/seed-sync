@@ -26,7 +26,7 @@ func NewTokenBucket(capacity float64, timeUnit time.Duration) *TokenBucket {
 	return &TokenBucket{
 		tokens:   capacity,
 		capacity: capacity,
-		rate:     capacity / float64(timeUnit),
+		rate:     capacity / timeUnit.Seconds(),
 		lastTime: time.Now(),
 		timeUnit: timeUnit,
 	}

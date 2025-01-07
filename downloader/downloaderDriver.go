@@ -38,7 +38,17 @@ type SeedHash struct {
 	Size        int64
 	Tags        []string
 	DownloadDir string
+	Status      string
 }
+
+const (
+	SEED_STATUS_STOPPED           = "stopped"
+	SEED_STATUS_VERIFY_LOCAL_DATA = "verify_local_data"
+	SEED_STATUS_QUEUE_TO_DOWNLOAD = "queue_to_download"
+	SEED_STATUS_DOWNLOADING       = "downloading"
+	SEED_STATUS_QUEUE_TO_SEED     = "queue_to_seed"
+	SEED_STATUS_SEEDING           = "seeding"
+)
 
 func NewDownloader(config *DownloaderConfig) (Downloader, error) {
 	switch config.Type {

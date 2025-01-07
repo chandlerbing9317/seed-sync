@@ -232,20 +232,38 @@ func (service *seedSyncService) doSeedSync(task *SeedSyncTaskInfo) error {
 	if err != nil {
 		return fmt.Errorf("辅种失败：从下载器获取种子失败， 错误: %v", err)
 	}
+
 	//转map，key为hash
 	seedMap := make(map[string]downloader.SeedHash)
 	for _, seed := range seeds {
 		seedMap[seed.InfoHash] = seed
 	}
 
+	//过滤
+	filteredSeeds := make([]downloader.SeedHash, 0)
+	for _, seed := range seeds {
+		if seed.Status != downloader.SEED_STATUS_SEEDING {
+			continue
+		}
+		if task.MinSize > 0 && seed.Size < task.MinSize {
+			continue
+		}
+		if common.HasSameElement(task.ExcludePath, []string{seed.DownloadDir}) {
+			continue
+		}
+		if common.HasSameElement(task.ExcludeTag, seed.Tags) {
+			continue
+		}
+		filteredSeeds = append(filteredSeeds, seed)
+	}
 	//分批
 	batchSeeds := make([][]downloader.SeedHash, 0)
-	for i := 0; i < len(seeds); i += SEED_SYNC_BATCH_SIZE {
+	for i := 0; i < len(filteredSeeds); i += SEED_SYNC_BATCH_SIZE {
 		end := i + SEED_SYNC_BATCH_SIZE
-		if end > len(seeds) {
-			end = len(seeds)
+		if end > len(filteredSeeds) {
+			end = len(filteredSeeds)
 		}
-		batchSeeds = append(batchSeeds, seeds[i:end])
+		batchSeeds = append(batchSeeds, filteredSeeds[i:end])
 	}
 	//分批请求和辅种
 	for _, batch := range batchSeeds {
@@ -289,12 +307,20 @@ func (service *seedSyncService) handleSeedSyncResponse(response map[string][]see
 	return nil
 }
 
+// 下载种子并调用下载器客户端添加种子然后辅种
 func (service *seedSyncService) downloadAndSyncSeed(srcSeed downloader.SeedHash, seedForSync seedSyncServer.SeedSyncTorrentInfoResponse, downloaderClient downloader.Downloader) error {
 	//获取站点客户端
 	siteClient := site.SiteService.GetSiteClient(seedForSync.SiteName)
 	if siteClient == nil {
 		return fmt.Errorf("辅种失败：站点客户端不存在，站点名称: %s", seedForSync.SiteName)
 	}
+	log.Info("站点种子不在下载器中，准备开始下载",
+		zap.String("siteName", seedForSync.SiteName),
+		zap.Int("torrentId", seedForSync.TorrentId),
+		zap.String("infoHash", seedForSync.InfoHash),
+		zap.Int64("id in downloader", srcSeed.ID),
+		zap.String("downloadDir in downloader", srcSeed.DownloadDir),
+	)
 	//下载种子 //todo 这里要加一定的休眠 避免太快触发限流 但休眠按站点加，每个站点并行处理
 	bytes, err := siteClient.DownloadTorrent(seedForSync.TorrentId)
 	time.Sleep(5 * time.Second)
@@ -318,23 +344,14 @@ func (service *seedSyncService) downloadAndSyncSeed(srcSeed downloader.SeedHash,
 
 func getSeedSyncRequest(seeds []downloader.SeedHash, task *SeedSyncTaskInfo) *seedSyncServer.SeedSyncRequest {
 	//向服务端请求可辅种的种子
-	infoHashList := make([]string, 0)
-	for _, seed := range seeds {
-		//过滤掉不辅种的种子
-		if seed.Size < task.MinSize {
-			continue
-		}
-		if common.HasSameElement(task.ExcludePath, []string{seed.DownloadDir}) {
-			continue
-		}
-		if common.HasSameElement(task.ExcludeTag, seed.Tags) {
-			continue
-		}
-		infoHashList = append(infoHashList, seed.InfoHash)
-	}
-	if len(infoHashList) == 0 {
+	if len(seeds) == 0 {
 		return nil
 	}
+	infoHashList := make([]string, 0)
+	for _, seed := range seeds {
+		infoHashList = append(infoHashList, seed.InfoHash)
+	}
+
 	return &seedSyncServer.SeedSyncRequest{
 		InfoHash: infoHashList,
 		Sites:    task.SiteList,

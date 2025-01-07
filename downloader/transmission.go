@@ -99,7 +99,7 @@ func (t *TransmissionClient) Ping() error {
 
 func (t *TransmissionClient) GetSeedsHash() ([]SeedHash, error) {
 	arguments := map[string]any{
-		"fields": []string{"id", "hashString", "downloadDir", "totalSize", "labels"},
+		"fields": []string{"id", "hashString", "downloadDir", "totalSize", "labels", "status"},
 	}
 	response, err := t.doRequest(MethodTorrentGet, arguments)
 	if err != nil {
@@ -119,11 +119,29 @@ func (t *TransmissionClient) GetSeedsHash() ([]SeedHash, error) {
 			continue
 		}
 
+		//种子状态
+		var status string
+		statusInt := int64(torrentMap["status"].(float64))
+		switch statusInt {
+		case 0:
+			status = SEED_STATUS_STOPPED
+		case 1:
+			status = SEED_STATUS_VERIFY_LOCAL_DATA
+		case 2:
+			status = SEED_STATUS_QUEUE_TO_DOWNLOAD
+		case 3:
+			status = SEED_STATUS_DOWNLOADING
+		case 4:
+			status = SEED_STATUS_QUEUE_TO_SEED
+		case 6:
+			status = SEED_STATUS_SEEDING
+		}
 		hash := SeedHash{
 			ID:          int64(torrentMap["id"].(float64)),
 			InfoHash:    torrentMap["hashString"].(string),
 			Size:        int64(torrentMap["totalSize"].(float64)),
 			DownloadDir: torrentMap["downloadDir"].(string),
+			Status:      status,
 		}
 
 		// 处理 labels
@@ -142,8 +160,8 @@ func (t *TransmissionClient) GetSeedsHash() ([]SeedHash, error) {
 
 func (t *TransmissionClient) AddTorrent(AddTorrentRequest *AddTorrentRequest) error {
 	arguments := map[string]any{
-		"downloadDir": AddTorrentRequest.DownloadDir,
-		"paused":      AddTorrentRequest.Paused,
+		"download-dir": AddTorrentRequest.DownloadDir,
+		"paused":       AddTorrentRequest.Paused,
 	}
 	//优先使用torrentFile
 	if AddTorrentRequest.TorrentFile != nil {
